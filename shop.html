@@ -5,11 +5,10 @@
 <title>FishyLife - Shop</title>
 <style>
 body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
-header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
-header a{color:white;text-decoration:none;}
+header{display:flex;justify-content:space-around;padding:12px;background:rgba(0,0,0,.35);}
+header a{color:white;text-decoration:none;font-size:18px;}
 .card{background:rgba(0,0,0,.35);width:360px;margin:20px auto;padding:20px;border-radius:14px;}
-button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:6px;cursor:pointer;}
-input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
+button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:4px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -23,86 +22,64 @@ input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 <h1>🛒 Shop</h1>
 
 <div class="card">
-<h2>💰 Money: $<span id="money"></span></h2>
+<h2>Buy Bait</h2>
+<button onclick="buyBait()">$50 for 5 Bait</button>
+<p>Money: $<span id="money"></span></p>
+<p>Bait: <span id="bait"></span></p>
 </div>
 
 <div class="card">
-<h2>🪱 Buy Basic Bait</h2>
-<p>$5 each</p>
-<input type="number" id="baitQty" value="1" min="1">
-<button onclick="buyBait()">Buy</button>
-</div>
-
-<div class="card">
-<h2>🪱 Buy Advanced Bait</h2>
-<p>$20 → gives 2 bait</p>
-<input type="number" id="advQty" value="1" min="1">
-<button onclick="buyAdv()">Buy</button>
-</div>
-
-<div class="card">
-<h2>🎣 Upgrade Rod</h2>
-<p>Current: <span id="rodName"></span></p>
-<p>Cost: $<span id="rodPrice"></span></p>
-<button onclick="upgradeRod()">Upgrade</button>
+<h2>Buy Rods</h2>
+<div id="rodList"></div>
 </div>
 
 <script>
-const rods=[
-{name:"Basic Rod",price:0},
-{name:"Silver Rod",price:200},
-{name:"Gold Rod",price:400},
-{name:"Dark Rod",price:600},
-{name:"Reef Rod",price:800},
-{name:"Lava Rod",price:1200},
-{name:"Clam Rod",price:1600},
-{name:"Lucky Rod",price:1800}
-];
-
+// Load game
 let g = JSON.parse(localStorage.getItem("game"));
-if(!g){location.href="index.html";}
+if(!g){ alert("No save found!"); location.href="index.html"; }
+updateStats();
 
-function update(){
-    document.getElementById("money").textContent=g.money;
-    document.getElementById("rodName").textContent=g.rod;
-    const i=rods.findIndex(r=>r.name===g.rod);
-    document.getElementById("rodPrice").textContent =
-        i<rods.length-1 ? rods[i+1].price : "MAX";
+// Update display
+function updateStats(){
+    document.getElementById("money").textContent = g.money;
+    document.getElementById("bait").textContent = g.bait;
+    renderRods();
 }
-update();
 
+// Buy bait
 function buyBait(){
-    const q=+baitQty.value||1;
-    const cost=q*5;
-    if(g.money<cost) return alert("Not enough money");
-    g.money-=cost;
-    g.bait+=q;
-    save();
-}
-
-function buyAdv(){
-    const q=+advQty.value||1;
-    const cost=q*20;
-    if(g.money<cost) return alert("Not enough money");
-    g.money-=cost;
-    g.bait+=q*2;
-    save();
-}
-
-function upgradeRod(){
-    const i=rods.findIndex(r=>r.name===g.rod);
-    if(i>=rods.length-1) return alert("Max rod");
-    const n=rods[i+1];
-    if(g.money<n.price) return alert("Not enough money");
-    g.money-=n.price;
-    g.rod=n.name;
-    save();
-}
-
-function save(){
+    if(g.money<50){ alert("Not enough money!"); return; }
+    g.money-=50;
+    g.bait+=5;
     localStorage.setItem("game",JSON.stringify(g));
-    update();
+    updateStats();
+}
+
+// Rod shop
+const rodData={"Basic Rod":0,"Silver Rod":200,"Gold Rod":400,"Dark Rod":600,"Reef Rod":800,"Lava Rod":1200,"Clam Rod":1600,"Lucky Rod":1800};
+
+function renderRods(){
+    const rodList=document.getElementById("rodList");
+    rodList.innerHTML="";
+    for(let rod in rodData){
+        const btn=document.createElement("button");
+        const owned = g.rod===rod ? "(Owned)" : `$${rodData[rod]}`;
+        btn.textContent=rod+" "+owned;
+        if(g.rod!==rod){
+            btn.onclick=(function(r){
+                return function(){
+                    if(g.money<rodData[r]){ alert("Not enough money!"); return; }
+                    g.money-=rodData[r];
+                    g.rod=r;
+                    localStorage.setItem("game",JSON.stringify(g));
+                    updateStats();
+                };
+            })(rod);
+        }
+        rodList.appendChild(btn);
+    }
 }
 </script>
+
 </body>
 </html>
