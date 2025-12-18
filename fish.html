@@ -100,12 +100,15 @@ if(!g){
     alert("No save found! Returning to home.");
     location.href="index.html";
 }
-if(g.bait <= 0){
+
+// Only block if 0 bait
+if(!g.bait || g.bait <= 0){
     alert("No bait! Returning to shop.");
     location.href="shop.html";
+} else {
+    g.bait--; // Subtract 1 bait for this fishing session
+    localStorage.setItem("game", JSON.stringify(g));
 }
-g.bait--;
-localStorage.setItem("game", JSON.stringify(g));
 
 // ----- FISH DATA -----
 const fish = { name:"Bass", xp:20, rarity:1.2 };
@@ -171,6 +174,14 @@ const loop = setInterval(()=>{
         g.inventory[fish.name] = (g.inventory[fish.name]||0) + 1;
         g.money += fish.xp;
         g.xp += fish.xp;
+
+        // Level up
+        while(g.xp >= g.xpNeed){
+            g.xp -= g.xpNeed;
+            g.level++;
+            g.xpNeed = Math.floor(g.xpNeed*1.5);
+        }
+
         localStorage.setItem("game", JSON.stringify(g));
         alert("🐟 You caught a " + fish.name + "!");
         location.href="index.html";
