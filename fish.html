@@ -2,111 +2,74 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>FishyLife - Fishing</title>
+<title>Fishing</title>
 <style>
-body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
-header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
-header a{color:white;text-decoration:none;}
+body{text-align:center;font-family:Arial;background:#4db8ff;color:white;}
 #track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:30px auto;position:relative;}
 #fish{width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:10px;}
 #box{height:40px;border:3px solid red;position:absolute;top:0;}
-.barWrap{width:520px;height:16px;background:#222;margin:6px auto;border-radius:8px;}
-.bar{height:100%;width:0%;background:lime;border-radius:8px;}
-button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
+.bar{width:0;height:16px;background:lime;margin:auto;border-radius:8px;}
 </style>
 </head>
 <body>
 
-<header>
-<a href="index.html">🏠 Home</a>
-<a href="shop.html">🛒 Shop</a>
-</header>
-
 <h1>🎣 Fishing</h1>
-<p>Keep the fish inside the red box</p>
 
 <div id="track">
-    <div id="fish"></div>
-    <div id="box"></div>
+<div id="fish"></div>
+<div id="box"></div>
 </div>
 
-<div class="barWrap"><div id="catchBar" class="bar"></div></div>
-<p id="rarityText"></p>
-
-<button id="left">⬅️</button>
-<button id="right">➡️</button>
+<div class="bar" id="bar"></div>
+<p id="sizeText"></p>
 
 <script>
 let g=JSON.parse(localStorage.getItem("game"));
-if(!g){location.href="index.html";}
-if(g.bait<=0){alert("No bait");location.href="shop.html";}
+if(!g||g.bait<=0){location.href="index.html";}
 g.bait--;
 
-const fishByLoc={
-Creek:[{name:"Minnow",xp:10,r:0.6},{name:"Bass",xp:20,r:1.2}],
-Lake:[{name:"Salmon",xp:40,r:1.7},{name:"Catfish",xp:30,r:1.4}],
-Ocean:[{name:"Moonfish",xp:55,r:1.7},{name:"Abyssal Octopus",xp:500,r:3}]
-};
+const fish={name:"Bass",xp:20,value:20,rarity:1.2};
 
-let fish;
-
-// ADMIN OVERRIDE
-if(g.adminMode){
-    fish={name:"Abyssal Octopus",xp:500,r:3};
-}else{
-    const list=fishByLoc[g.location];
-    fish={...list[Math.floor(Math.random()*list.length)]};
+/* ===== SIZE SYSTEM ===== */
+function getSize(){
+    const r=Math.random();
+    if(r<0.5) return {name:"Small",mult:0.8};
+    if(r<0.85) return {name:"Normal",mult:1};
+    if(r<0.97) return {name:"Large",mult:1.5};
+    return {name:"Giant",mult:3};
 }
+const size=getSize();
+sizeText.textContent=`Size: ${size.name}`;
 
-function category(r){
-    if(r<1) return "Common";
-    if(r<1.2) return "Uncommon";
-    if(r<1.5) return "Rare";
-    if(r<2) return "Epic";
-    return "Legendary";
-}
-
-rarityText.textContent="Category: "+category(fish.r);
-
-const BAR=520;
-let fishX=260,dir=1,boxX=200,move=0;
-let boxW=100+(g.rod?10:0);
-box.style.width=boxW+"px";
-let prog=0;
-
-document.onkeydown=e=>move=e.key==="ArrowLeft"?-1:e.key==="ArrowRight"?1:move;
-document.onkeyup=()=>move=0;
-left.onmousedown=()=>move=-1;
-right.onmousedown=()=>move=1;
-left.onmouseup=right.onmouseup=()=>move=0;
+let x=250,dir=1,boxX=200,prog=0;
+box.style.width="120px";
 
 const loop=setInterval(()=>{
-    fishX+=dir*(2+fish.r);
-    if(fishX<0||fishX>BAR-20) dir*=-1;
-    fish.style.left=fishX+"px";
+    x+=dir*(2+fish.rarity);
+    if(x<0||x>500) dir*=-1;
+    fish.style.left=x+"px";
 
-    boxX+=move*6;
-    boxX=Math.max(0,Math.min(BAR-boxW,boxX));
-    box.style.left=boxX+"px";
-
-    const inside=fishX+10>boxX&&fishX+10<boxX+boxW;
-    prog+=inside?1:-fish.r;
+    const inside=x>boxX&&x<boxX+120;
+    prog+=inside?1:-fish.rarity;
     prog=Math.max(0,Math.min(100,prog));
-    catchBar.style.width=prog+"%";
+    bar.style.width=prog+"%";
 
     if(prog>=100){
         clearInterval(loop);
-        g.inventory[fish.name]=(g.inventory[fish.name]||0)+1;
-        g.caught[fish.name]=true;
-        g.money+=fish.xp;
-        g.xp+=fish.xp;
-        while(g.xp>=g.xpNeed){
-            g.xp-=g.xpNeed;
-            g.level++;
-            g.xpNeed=Math.floor(g.xpNeed*1.5);
+        const finalName=`${size.name} ${fish.name}`;
+        g.inventory[finalName]=(g.inventory[finalName]||0)+1;
+        g.xp+=Math.floor(fish.xp*size.mult);
+        g.money+=Math.floor(fish.value*size.mult);
+
+        // QUEST PROGRESS
+        if(g.quest){
+            if(g.quest.type==="catch") g.quest.progress++;
+            if(g.quest.type==="rare" && fish.rarity>=1.5) g.quest.progress++;
+            if(g.quest.type==="money") g.quest.progress+=fish.value;
         }
+
         localStorage.setItem("game",JSON.stringify(g));
-        alert("Caught: "+fish.name);
+        alert("Caught "+finalName);
         location.href="index.html";
     }
 },16);
