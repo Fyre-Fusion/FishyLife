@@ -2,35 +2,50 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Fishing</title>
+<title>FishyLife - Fishing</title>
 <style>
-body{text-align:center;font-family:Arial;background:#4db8ff;color:white;}
+body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
+header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
+header a{color:white;text-decoration:none;}
 #track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:30px auto;position:relative;}
 #fish{width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:10px;}
 #box{height:40px;border:3px solid red;position:absolute;top:0;}
-.bar{width:0;height:16px;background:lime;margin:auto;border-radius:8px;}
+.barWrap{width:520px;height:16px;background:#222;margin:6px auto;border-radius:8px;}
+.bar{height:100%;width:0%;background:lime;border-radius:8px;}
+button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
 </style>
 </head>
 <body>
 
+<header>
+<a href="index.html">🏠 Home</a>
+<a href="shop.html">🛒 Shop</a>
+</header>
+
 <h1>🎣 Fishing</h1>
+<p>Keep the fish inside the red box</p>
 
 <div id="track">
-<div id="fish"></div>
-<div id="box"></div>
+    <div id="fish"></div>
+    <div id="box"></div>
 </div>
 
-<div class="bar" id="bar"></div>
-<p id="sizeText"></p>
+<div class="barWrap"><div id="catchBar" class="bar"></div></div>
+
+<button id="left">⬅️</button>
+<button id="right">➡️</button>
 
 <script>
+/* ===== LOAD ===== */
 let g=JSON.parse(localStorage.getItem("game"));
-if(!g||g.bait<=0){location.href="index.html";}
+if(!g){location.href="index.html";}
+if(g.bait<=0){alert("No bait");location.href="shop.html";}
 g.bait--;
 
+/* ===== FISH ===== */
 const fish={name:"Bass",xp:20,value:20,rarity:1.2};
 
-/* ===== SIZE SYSTEM ===== */
+/* ===== SIZE ===== */
 function getSize(){
     const r=Math.random();
     if(r<0.5) return {name:"Small",mult:0.8};
@@ -39,20 +54,44 @@ function getSize(){
     return {name:"Giant",mult:3};
 }
 const size=getSize();
-sizeText.textContent=`Size: ${size.name}`;
 
-let x=250,dir=1,boxX=200,prog=0;
-box.style.width="120px";
+/* ===== VARS ===== */
+const BAR=520;
+let fishX=250,fishDir=Math.random()<0.5?-1:1;
+let boxX=200,move=0;
+let boxW=120;
+let prog=0;
 
+/* ===== UI ===== */
+box.style.width=boxW+"px";
+
+/* ===== INPUT ===== */
+document.onkeydown=e=>{
+    if(e.key==="ArrowLeft") move=-1;
+    if(e.key==="ArrowRight") move=1;
+};
+document.onkeyup=()=>move=0;
+left.onmousedown=()=>move=-1;
+right.onmousedown=()=>move=1;
+left.onmouseup=right.onmouseup=()=>move=0;
+
+/* ===== LOOP ===== */
 const loop=setInterval(()=>{
-    x+=dir*(2+fish.rarity);
-    if(x<0||x>500) dir*=-1;
-    fish.style.left=x+"px";
+    fishX+=fishDir*(2+fish.rarity);
+    if(Math.random()<0.02) fishDir*=-1;
+    if(fishX<0||fishX>BAR-20) fishDir*=-1;
+    fish.style.left=fishX+"px";
 
-    const inside=x>boxX&&x<boxX+120;
-    prog+=inside?1:-fish.rarity;
+    boxX+=move*6;
+    boxX=Math.max(0,Math.min(BAR-boxW,boxX));
+    box.style.left=boxX+"px";
+
+    const center=fishX+10;
+    const inside=center>boxX&&center<boxX+boxW;
+
+    prog+=inside?0.8:-0.6*fish.rarity;
     prog=Math.max(0,Math.min(100,prog));
-    bar.style.width=prog+"%";
+    catchBar.style.width=prog+"%";
 
     if(prog>=100){
         clearInterval(loop);
@@ -64,7 +103,7 @@ const loop=setInterval(()=>{
         // QUEST PROGRESS
         if(g.quest){
             if(g.quest.type==="catch") g.quest.progress++;
-            if(g.quest.type==="rare" && fish.rarity>=1.5) g.quest.progress++;
+            if(g.quest.type==="rare"&&fish.rarity>=1.5) g.quest.progress++;
             if(g.quest.type==="money") g.quest.progress+=fish.value;
         }
 
@@ -74,5 +113,6 @@ const loop=setInterval(()=>{
     }
 },16);
 </script>
+
 </body>
 </html>
