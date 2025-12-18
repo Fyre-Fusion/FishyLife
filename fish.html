@@ -15,6 +15,7 @@ header a{color:white;text-decoration:none;}
 #catchBar{background:lime;}
 #rarityBar{background:violet;}
 button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
+#customBaitDiv{display:none;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -38,6 +39,12 @@ button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
 <button id="left">⬅️</button>
 <button id="right">➡️</button>
 
+<div id="customBaitDiv">
+<h2>Create Custom Bait</h2>
+<select id="customFishSelect"></select>
+<button onclick="createCustomBait()">Create Bait</button>
+</div>
+
 <script>
 // ----- LOAD GAME -----
 let g = JSON.parse(localStorage.getItem("game")) || null;
@@ -45,13 +52,21 @@ if(!g){
     alert("No save found! Returning to home.");
     location.href="index.html";
 }
-if(!g.unlocked[g.location]){
-    alert("Location locked! Returning to home.");
-    location.href="index.html";
-}
 if(g.bait<=0){alert("No bait!"); location.href="shop.html"; throw new Error("No bait");}
 g.bait--;
 localStorage.setItem("game", JSON.stringify(g));
+
+// Rod names
+const rods=[
+  {name:"Basic Rod",cost:0},
+  {name:"Silver Rod",cost:200},
+  {name:"Gold Rod",cost:400},
+  {name:"Dark Rod",cost:600},
+  {name:"Reef Rod",cost:800},
+  {name:"Lava Rod",cost:1200},
+  {name:"Clam Rod",cost:1600},
+  {name:"Lucky Rod",cost:1800}
+];
 
 // ----- FISH DATA PER LOCATION -----
 const fishByLoc={
@@ -60,9 +75,9 @@ Lake:[{name:"Trout",xp:25,rarity:1.1},{name:"Catfish",xp:30,rarity:1.4},{name:"S
 Ocean:[{name:"Red Snapper",xp:45,rarity:1.5},{name:"Moonfish",xp:55,rarity:1.7},{name:"Tigershark",xp:150,rarity:2.2},{name:"Basa",xp:40,rarity:1.2},{name:"Goldfish",xp:20,rarity:0.9},{name:"Angelfish",xp:22,rarity:1.0},{name:"Lemonshark",xp:120,rarity:2.0},{name:"Lungfish",xp:45,rarity:1.1},{name:"Squid",xp:35,rarity:1.0},{name:"Crabs",xp:20,rarity:0.9},{name:"Crawfish",xp:15,rarity:0.8},{name:"Mussels",xp:25,rarity:1.0},{name:"Clams",xp:25,rarity:1.0},{name:"Abyssal Octopus",xp:500,rarity:3.0}]
 };
 
-// Pick random fish
+// ----- PICK RANDOM FISH -----
 const list = fishByLoc[g.location];
-const fish = list[Math.floor(Math.random()*list.length)];
+let fish = list[Math.floor(Math.random()*list.length)];
 
 // ----- VARIABLES -----
 const BAR = 520;
@@ -79,9 +94,21 @@ rarityBar.style.width = (fish.rarity*35) + "%";
 // ----- INPUT -----
 document.onkeydown = e=>{ if(e.key==="ArrowLeft") move=-1; if(e.key==="ArrowRight") move=1; };
 document.onkeyup = ()=>move=0;
+
 document.getElementById("left").onmousedown = ()=>move=-1;
 document.getElementById("right").onmousedown = ()=>move=1;
 document.getElementById("left").onmouseup = document.getElementById("right").onmouseup = ()=>move=0;
+
+// ----- MUTATION CHANCES -----
+function mutateFish(f){
+    let rand = Math.random();
+    let rodBonus = (rods[g.rod]?.name==="Lucky Rod")?0.05:0; // Lucky rod adds 5% extra
+    let mutation="";
+    if(rand < 0.02 + rodBonus) mutation="Rainbow";       // super rare
+    else if(rand < 0.12 + rodBonus) mutation="Gold";      // 10% chance
+    else if(rand < 0.22 + rodBonus) mutation="Silver";    // 10% chance
+    return mutation;
+}
 
 // ----- MAIN LOOP -----
 const loop = setInterval(()=>{
@@ -104,23 +131,17 @@ const loop = setInterval(()=>{
 
     if(catchProg>=100){
         clearInterval(loop);
+        // ----- APPLY MUTATION -----
+        let mutation = mutateFish(fish.name);
+        let valueMultiplier=1;
+        if(mutation==="Silver") valueMultiplier=1.10;
+        if(mutation==="Gold") valueMultiplier=1.15;
+        if(mutation==="Rainbow") valueMultiplier=10;
 
-        // ----- MUTATIONS -----
-        let mutation = null;
-        let multiplier = 1;
-        let rand = Math.random();
-        let luckyBonus = (g.rod===7)?0.05:0; // Lucky rod increases chance by 5%
-        if(rand<0.01+luckyBonus){mutation="🌈 Rainbow"; multiplier=10;} 
-        else if(rand<0.05+luckyBonus){mutation="✨ Gold"; multiplier=1.15;}
-        else if(rand<0.15+luckyBonus){mutation="⚪ Silver"; multiplier=1.10;}
+        let finalFishName = fish.name + (mutation? " ("+mutation+")":"");
 
-        if(!g.inventory[fish.name]) g.inventory[fish.name]={count:0};
-        if(!g.inventory[fish.name].count) g.inventory[fish.name].count=0;
-        g.inventory[fish.name].count++;
-        g.inventory[fish.name].mutation=mutation;
-        g.inventory[fish.name].multiplier=multiplier;
-
-        g.caught[fish.name]=true;
+        g.inventory[finalFishName] = (g.inventory[finalFishName]||0)+1;
+        g.caught[fish.name] = true;
         g.fishCount++;
         g.xp += fish.xp;
         while(g.xp>=g.xpNeed){
@@ -129,10 +150,40 @@ const loop = setInterval(()=>{
             g.xpNeed = Math.floor(g.xpNeed*1.5);
         }
         localStorage.setItem("game", JSON.stringify(g));
-        setTimeout(()=>alert(`🐟 You caught a ${mutation?mutation+" ":""}${fish.name}!`),50);
+        setTimeout(()=>alert(`🐟 You caught a ${finalFishName}! Value x${valueMultiplier}`),50);
         setTimeout(()=>location.href="index.html",100);
     }
 },16);
+
+// ----- CUSTOM BAIT FOR LV15+ -----
+const customFish = ["Salmon","Tilapia","Clownfish","Goldfish","Kepper"];
+if(g.level>=15){
+    const div = document.getElementById("customBaitDiv");
+    div.style.display = "block";
+    const sel = document.getElementById("customFishSelect");
+    sel.innerHTML = "";
+    customFish.forEach(f=>{
+        if(g.inventory[f] && g.inventory[f]>0){
+            const opt = document.createElement("option");
+            opt.value = f;
+            opt.textContent = f;
+            sel.appendChild(opt);
+        }
+    });
+}
+
+function createCustomBait(){
+    const f = document.getElementById("customFishSelect").value;
+    if(!f){alert("No fish selected!"); return;}
+    if(g.inventory[f]<=0){alert("You don't have that fish."); return;}
+    g.inventory[f]--;
+    g.bait += 1;
+    if(g.inventory[f]<=0) delete g.inventory[f];
+    localStorage.setItem("game", JSON.stringify(g));
+    alert("Custom bait created from "+f+"!");
+    location.reload();
+}
 </script>
+
 </body>
 </html>
