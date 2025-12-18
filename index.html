@@ -31,7 +31,7 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <a href="shop.html">🛒 Shop</a>
 <a href="#" onclick="toggle('inventory')">🎒 Bag</a>
 <a href="#" onclick="toggle('encyclopedia')">📖 Book</a>
-<a href="#" onclick="toggle('quests')">📝 Quests</a>
+<a href="#" onclick="toggle('quests')">🗒️ Quests</a>
 </header>
 
 <h1>🐟 FishyLife</h1>
@@ -69,14 +69,12 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 </div>
 
 <div class="card" id="quests">
-<h2>📝 Quests</h2>
+<h2>🗒️ Quests</h2>
 <div id="questList"></div>
 </div>
 
-<!-- Hidden admin button -->
-<button id="adminBtn" style="position:fixed;bottom:2px;left:2px;font-size:6px;padding:2px;opacity:0.1;">Administrator</button>
-
-<button id="resetBtn" style="position:fixed;bottom:2px;right:2px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;">reset</button>
+<button id="adminBtn" style="position:fixed;bottom:2px;right:2px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;" onclick="adminUnlock()">Administrator</button>
+<button id="resetBtn" style="position:fixed;bottom:2px;right:40px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;">Reset</button>
 
 <script>
 // --------------- GAME DATA ---------------
@@ -96,11 +94,11 @@ const rodData={
 "Basic Rod":0,"Silver Rod":200,"Gold Rod":400,"Dark Rod":600,"Reef Rod":800,"Lava Rod":1200,"Clam Rod":1600,"Lucky Rod":1800
 };
 
-// --------------- QUESTS ---------------
-let quests = [
-  {desc:"Catch 5 Minnow",fish:"Minnow",target:5,progress:0,completed:false,reward:{money:50,xp:20,bait:1}},
-  {desc:"Catch 1 Salmon",fish:"Salmon",target:1,progress:0,completed:false,reward:{money:200,xp:50,bait:2}}
-];
+const promoCodes={
+"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
+"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
+"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
+};
 
 // --------------- LOAD GAME ---------------
 let g;
@@ -110,7 +108,7 @@ function loadGame(){
         g={
             level:1,xp:0,xpNeed:50,money:50,bait:5,rod:"Basic Rod",
             fishCount:0,location:"Creek",inventory:{},caught:{},
-            unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{}
+            unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{},quests:[]
         };
         localStorage.setItem("game",JSON.stringify(g));
     } else g=JSON.parse(saved);
@@ -155,7 +153,7 @@ function renderInventory(){
             const fishName=f;
             return ()=>{
                 if(g.inventory[fishName]>0){
-                    const fishVal = fishData.find(x=>x.name===fishName)?.value || 10;
+                    const fishVal = fishData.find(x=>x.name===fishName.split(" ").pop())?.value || 10;
                     g.inventory[fishName]--;
                     g.money+=fishVal;
                     if(g.inventory[fishName]<=0) delete g.inventory[fishName];
@@ -178,43 +176,31 @@ function renderFish(){
     fishData.forEach(f=>{
         const d=document.createElement("div");
         d.className="fish-card";
-        d.textContent=(g.caught[f.name]?"✅ ":"❌ ")+f.name;
+        const caught = Object.keys(g.caught).some(name => name === f.name || name.endsWith(f.name));
+        d.textContent=(caught?"✅ ":"❌ ")+f.name;
         fishList.appendChild(d);
     });
 }
 
 // --------------- QUESTS ---------------
 function renderQuests(){
-  const qDiv=document.getElementById("questList");
-  qDiv.innerHTML="";
-  quests.forEach(q=>{
-    const d=document.createElement("div");
-    d.textContent = `${q.completed?"✅":"❌"} ${q.desc} (${q.progress}/${q.target})`;
-    qDiv.appendChild(d);
-  });
-}
-
-function updateQuests(fishName){
-  quests.forEach(q=>{
-    if(!q.completed && q.fish===fishName){
-      q.progress++;
-      if(q.progress>=q.target){
-        q.completed=true;
-        g.money += q.reward.money;
-        g.xp += q.reward.xp;
-        g.bait += q.reward.bait;
-        alert(`Quest Completed: ${q.desc}!\nReward: $${q.reward.money}, XP ${q.reward.xp}, Bait ${q.reward.bait}`);
-      }
-    }
-  });
+    const questList=document.getElementById("questList");
+    questList.innerHTML="";
+    if(!g.quests.length) questList.textContent="No active quests.";
+    else g.quests.forEach(q=>{
+        const d=document.createElement("div");
+        d.className="fish-card";
+        d.textContent=`${q.name} - ${q.progress}/${q.goal}`;
+        questList.appendChild(d);
+    });
 }
 
 // --------------- LOCATION ---------------
 function changeLocation(){
-    const loc=location.value;
+    const loc=document.getElementById("location").value;
     if(!g.unlocked[loc]){
         alert("Location locked! Unlock it first.");
-        location.value=g.location;
+        document.getElementById("location").value=g.location;
         return;
     }
     g.location=loc;
@@ -223,7 +209,7 @@ function changeLocation(){
 }
 
 function unlockLocation(){
-    const loc=location.value;
+    const loc=document.getElementById("location").value;
     if(g.unlocked[loc]){
         alert("Already unlocked!");
         return;
@@ -242,12 +228,6 @@ function unlockLocation(){
 }
 
 // --------------- PROMO CODES ---------------
-const promoCodes={
-"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
-"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
-"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
-};
-
 function usePromo(){
     const code=document.getElementById("promoInput").value;
     if(!code){alert("Enter a code!"); return;}
@@ -261,26 +241,25 @@ function usePromo(){
     alert("Promo code applied!");
 }
 
-// --------------- ADMIN BUTTON ---------------
-document.getElementById("adminBtn").onclick=()=>{
-    const pw = prompt("Enter admin password:");
-    if(pw==="68467"){
+// --------------- ADMIN -----
+function adminUnlock(){
+    const pwd = prompt("Enter administrator password:");
+    if(pwd==="68467"){
         g.money=1000000;
         g.bait=9999;
         g.unlocked={Creek:true,Lake:true,Ocean:true};
         fishData.forEach(f=>g.caught[f.name]=true);
-        quests.forEach(q=>q.completed=true);
         localStorage.setItem("game",JSON.stringify(g));
-        alert("Administrator mode activated!");
         updateStats();
-    } else alert("Wrong password!");
-};
+        alert("Administrator unlocked! All fish & locations available.");
+    } else alert("Wrong password.");
+}
 
 // --------------- RESET ---------------
 document.getElementById("resetBtn").onclick=()=>{
     if(confirm("Reset all progress?")){
         localStorage.removeItem("game");
-        alert("Progress reset!");
+        alert("Progress reset! Reloading...");
         location.reload();
     }
 };
