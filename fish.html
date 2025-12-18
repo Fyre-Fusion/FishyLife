@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>FishyLife - Fishing</title>
@@ -63,6 +63,10 @@ button{
     margin:10px;
     cursor:pointer;
 }
+#rarityText{
+    font-size:18px;
+    margin:8px 0;
+}
 </style>
 </head>
 <body>
@@ -73,7 +77,7 @@ button{
 </header>
 
 <h1>🎣 Fishing</h1>
-<p>Keep the fish inside the red box</p>
+<p>Keep the fish inside the red box!</p>
 
 <div id="track">
     <div id="fish"></div>
@@ -91,30 +95,37 @@ button{
 
 <script>
 // ----- LOAD GAME -----
-let g = JSON.parse(localStorage.getItem("game")) || null;
-if(!g){ alert("No save found! Returning to home."); location.href="index.html"; }
-if(g.bait<=0){ alert("No bait!"); location.href="shop.html"; throw new Error("No bait"); }
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){
+    alert("No save found! Returning to home.");
+    location.href="index.html";
+}
+if(g.bait <= 0){
+    alert("No bait! Returning to shop.");
+    location.href="shop.html";
+}
 g.bait--;
 localStorage.setItem("game", JSON.stringify(g));
 
-// ----- FISH DATA (SAMPLE) -----
+// ----- FISH DATA -----
 const fish = { name:"Bass", xp:20, rarity:1.2 };
 
-// ----- RARITY TEXT FUNCTION -----
+// ----- RARITY FUNCTION -----
 function rarityName(r){
     if(r < 1) return "Common";
     else if(r >= 1 && r < 1.3) return "Uncommon";
     else if(r >= 1.3 && r < 1.6) return "Rare";
     else if(r >= 1.6 && r < 2) return "Epic";
-    else if(r >= 2) return "Legendary";
+    else return "Legendary";
 }
-document.getElementById("rarityText").textContent =
-    "Category: " + rarityName(fish.rarity);
+document.getElementById("rarityText").textContent = "Category: " + rarityName(fish.rarity);
 
 // ----- VARIABLES -----
 const BAR = 520;
-let fishX = 250, fishDir = Math.random()<0.5?-1:1;
-let boxX = 200, move = 0;
+let fishX = 250;
+let fishDir = Math.random()<0.5?-1:1;
+let boxX = 200;
+let move = 0;
 let boxW = 120;
 let catchProg = 0;
 
@@ -135,24 +146,26 @@ document.getElementById("left").onmouseup = document.getElementById("right").onm
 
 // ----- MAIN LOOP -----
 const loop = setInterval(()=>{
+    // Fish movement
     fishX += fishDir * (2 + fish.rarity);
-    if(Math.random()<0.02) fishDir *= -1;
-    if(fishX<0 || fishX>BAR-20) fishDir*=-1;
+    if(Math.random() < 0.02) fishDir *= -1;
+    if(fishX < 0 || fishX > BAR - 20) fishDir *= -1;
     fishEl.style.left = fishX + "px";
 
+    // Box movement
     boxX += move * 6;
-    boxX = Math.max(0, Math.min(BAR-boxW, boxX));
+    boxX = Math.max(0, Math.min(BAR - boxW, boxX));
     box.style.left = boxX + "px";
 
+    // Catch progress
     const center = fishX + 10;
     const inside = center > boxX && center < boxX + boxW;
-
     if(inside) catchProg += 0.8;
     else catchProg -= 0.6 * fish.rarity;
-
     catchProg = Math.max(0, Math.min(100, catchProg));
     catchBar.style.width = catchProg + "%";
 
+    // Catch completed
     if(catchProg >= 100){
         clearInterval(loop);
         g.inventory[fish.name] = (g.inventory[fish.name]||0) + 1;
@@ -162,7 +175,7 @@ const loop = setInterval(()=>{
         alert("🐟 You caught a " + fish.name + "!");
         location.href="index.html";
     }
-},16);
+}, 16);
 </script>
 
 </body>
