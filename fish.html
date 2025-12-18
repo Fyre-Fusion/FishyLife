@@ -56,18 +56,6 @@ if(g.bait<=0){alert("No bait!"); location.href="shop.html"; throw new Error("No 
 g.bait--;
 localStorage.setItem("game", JSON.stringify(g));
 
-// Rod names
-const rods=[
-  {name:"Basic Rod",cost:0},
-  {name:"Silver Rod",cost:200},
-  {name:"Gold Rod",cost:400},
-  {name:"Dark Rod",cost:600},
-  {name:"Reef Rod",cost:800},
-  {name:"Lava Rod",cost:1200},
-  {name:"Clam Rod",cost:1600},
-  {name:"Lucky Rod",cost:1800}
-];
-
 // ----- FISH DATA PER LOCATION -----
 const fishByLoc={
 Creek:[{name:"Minnow",xp:10,rarity:0.6},{name:"Bluegill",xp:15,rarity:0.9},{name:"Bass",xp:20,rarity:1.2},{name:"Tilapia",xp:25,rarity:1.0},{name:"Clownfish",xp:30,rarity:1.1}],
@@ -75,20 +63,26 @@ Lake:[{name:"Trout",xp:25,rarity:1.1},{name:"Catfish",xp:30,rarity:1.4},{name:"S
 Ocean:[{name:"Red Snapper",xp:45,rarity:1.5},{name:"Moonfish",xp:55,rarity:1.7},{name:"Tigershark",xp:150,rarity:2.2},{name:"Basa",xp:40,rarity:1.2},{name:"Goldfish",xp:20,rarity:0.9},{name:"Angelfish",xp:22,rarity:1.0},{name:"Lemonshark",xp:120,rarity:2.0},{name:"Lungfish",xp:45,rarity:1.1},{name:"Squid",xp:35,rarity:1.0},{name:"Crabs",xp:20,rarity:0.9},{name:"Crawfish",xp:15,rarity:0.8},{name:"Mussels",xp:25,rarity:1.0},{name:"Clams",xp:25,rarity:1.0},{name:"Abyssal Octopus",xp:500,rarity:3.0}]
 };
 
-// ----- PICK RANDOM FISH -----
+// ----- PICK RANDOM FISH OR CHEST/BOOT -----
 const list = fishByLoc[g.location];
-let fish = list[Math.floor(Math.random()*list.length)];
+let specialList = ["None","Chest","Boot"]; // Chance for chests and boots
+
+const fish = list[Math.floor(Math.random()*list.length)];
+let special = specialList[Math.random()<0.05? Math.floor(Math.random()*specialList.length):0]; // 5% chance for chest or boot
 
 // ----- VARIABLES -----
 const BAR = 520;
 let fishX = 250, fishDir = Math.random()<0.5?-1:1;
 let boxX = 200, move = 0;
+let rodNames = ["Basic","Silver","Gold","Dark","Reef","Lava","Clam","Lucky"];
 let boxW = 100 + g.rod*10;
 document.getElementById("box").style.width = boxW + "px";
 
 let catchProg = 0;
 let catchBar = document.getElementById("catchBar");
 let rarityBar = document.getElementById("rarityBar");
+
+// Rarity meter visual
 rarityBar.style.width = (fish.rarity*35) + "%";
 
 // ----- INPUT -----
@@ -99,57 +93,38 @@ document.getElementById("left").onmousedown = ()=>move=-1;
 document.getElementById("right").onmousedown = ()=>move=1;
 document.getElementById("left").onmouseup = document.getElementById("right").onmouseup = ()=>move=0;
 
-// ----- MUTATION AND SPECIAL ITEMS -----
-function mutateFish(f){
+// ----- MUTATION FUNCTION -----
+function mutateFish(name){
     let rand = Math.random();
-    let rodBonus = (rods[g.rod]?.name==="Lucky Rod")?0.05:0; 
-    let mutation="";
-    if(rand < 0.02 + rodBonus) mutation="Rainbow";       
-    else if(rand < 0.12 + rodBonus) mutation="Gold";      
-    else if(rand < 0.22 + rodBonus) mutation="Silver";    
-    return mutation;
-}
-
-// Chance to spawn special items instead of fish
-function specialCatch(){
-    let roll = Math.random();
-    if(roll < 0.03) return "Chest"; // 3% chance
-    if(roll < 0.06) return "Boot";  // next 3%
+    if(rand<0.01) return "Rainbow"; // very rare
+    else if(rand<0.05) return "Gold";
+    else if(rand<0.15) return "Silver";
     return null;
 }
 
 // ----- MAIN LOOP -----
-let special=null;
 const loop = setInterval(()=>{
-    if(!special){
-        special = specialCatch();
-        if(special==="Chest"){
-            fishX = Math.random()*(BAR-20);
-            fishDir = Math.random()<0.5?-1:1;
-        }
-        if(special==="Boot"){
-            fishX = Math.random()*(BAR-20);
-            fishDir = Math.random()<0.5?-1:1;
-        }
-    }
-
-    fishX += fishDir * (2 + (fish?.rarity || 1));
+    // fish moves
+    fishX += fishDir * (2 + fish.rarity);
     if(Math.random()<0.02) fishDir *= -1;
     if(fishX <0 || fishX>BAR-20) fishDir*=-1;
     document.getElementById("fish").style.left = fishX+"px";
 
+    // box moves
     boxX += move*6;
     boxX = Math.max(0, Math.min(BAR-boxW, boxX));
     document.getElementById("box").style.left = boxX+"px";
 
+    // progress logic
     const center = fishX + 10;
     const inside = center > boxX && center < boxX + boxW;
     if(inside) catchProg += 0.8;
-    else catchProg -= 0.6 * (fish?.rarity || 1);
+    else catchProg -= 0.6 * fish.rarity;
 
     catchProg = Math.max(0, Math.min(100, catchProg));
     catchBar.style.width = catchProg+"%";
 
+    // ----- CATCH -----
     if(catchProg>=100){
         clearInterval(loop);
 
@@ -166,20 +141,22 @@ const loop = setInterval(()=>{
         }
         else{
             let mutation = mutateFish(fish.name);
-            let valueMultiplier=1;
-            if(mutation==="Silver") valueMultiplier=1.10;
-            if(mutation==="Gold") valueMultiplier=1.15;
-            if(mutation==="Rainbow") valueMultiplier=10;
+            let multiplier = 1;
+            if(mutation==="Silver") multiplier = 1.10;
+            if(mutation==="Gold") multiplier = 1.15;
+            if(mutation==="Rainbow") multiplier = 10;
 
-            let finalFishName = fish.name + (mutation? " ("+mutation+")":"");
-
-            g.inventory[finalFishName] = (g.inventory[finalFishName]||0)+1;
+            // store base fish
+            g.inventory[fish.name] = (g.inventory[fish.name]||0)+1;
             g.caught[fish.name] = true;
             g.fishCount++;
             g.xp += fish.xp;
-            alert(`🐟 You caught a ${finalFishName}! Value x${valueMultiplier}`);
+
+            let displayName = fish.name + (mutation? " ("+mutation+")":"");
+            alert(`🐟 You caught a ${displayName}! Value x${multiplier}`);
         }
 
+        // level up
         while(g.xp>=g.xpNeed){
             g.xp -= g.xpNeed;
             g.level++;
