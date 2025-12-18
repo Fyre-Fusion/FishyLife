@@ -40,6 +40,7 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <p>🧪 XP: <span id="xp"></span>/<span id="xpNeed"></span></p>
 <p>💰 Money: $<span id="money"></span></p>
 <p>🪱 Bait: <span id="bait"></span></p>
+<p>🎣 Rod: <span id="rodName"></span></p>
 
 <p>🌍 Location:
 <select id="location" onchange="changeLocation()">
@@ -85,20 +86,27 @@ const fishData=[
 
 const locationPrice={Lake:5000,Ocean:10000};
 
+const rods=[
+{name:"Basic Rod",cost:0},{name:"Silver Rod",cost:200},{name:"Gold Rod",cost:400},{name:"Dark Rod",cost:600},
+{name:"Reef Rod",cost:800},{name:"Lava Rod",cost:1200},{name:"Clam Rod",cost:1600},{name:"Lucky Rod",cost:1800}
+];
+
 // ----------- LOAD GAME -------------
 let g;
 function loadGame(){
     let saved=localStorage.getItem("game");
     if(!saved){
         g={
-            level:1,xp:0,xpNeed:50,money:50,bait:5,rod:1,
-            fishCount:0,location:"Creek",inventory:{},caught:{},
+            level:1,xp:0,xpNeed:50,money:50,bait:5,
+            rod:0,fishCount:0,location:"Creek",
+            inventory:{},caught:{},
             unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{}
         };
         localStorage.setItem("game",JSON.stringify(g));
     } else g=JSON.parse(saved);
 
     updateStats();
+    updateLocationDropdown();
 }
 function updateStats(){
     level.textContent=g.level;
@@ -106,10 +114,19 @@ function updateStats(){
     xpNeed.textContent=g.xpNeed;
     money.textContent=g.money;
     bait.textContent=g.bait;
-    location.value=g.location;
-    document.getElementById("fishBtn").classList.toggle("disabled",!g.unlocked[g.location]);
+    rodName.textContent=rods[g.rod].name;
+    document.getElementById("fishBtn").classList.toggle("disabled",!g.unlocked[g.location] || g.bait<=0);
 }
 loadGame();
+
+// ----------- LOCATION DROPDOWN -------------
+function updateLocationDropdown(){
+    const sel=document.getElementById("location");
+    for(let opt of sel.options){
+        opt.disabled = !g.unlocked[opt.value];
+    }
+    sel.value=g.location;
+}
 
 // ----------- TOGGLE CARDS -------------
 function toggle(id){
@@ -131,15 +148,16 @@ function renderInventory(){
         const div=document.createElement("div");
         div.className="fish-card";
         const nameSpan=document.createElement("span");
-        nameSpan.textContent=`${f} x${g.inventory[f]}`;
+        nameSpan.textContent=`${g.inventory[f].mutation?g.inventory[f].mutation+" ":""}${f} x${g.inventory[f].count}`;
         const sellBtn=document.createElement("button");
         sellBtn.textContent="Sell";
         sellBtn.onclick=()=>{
-            if(g.inventory[f]>0){
+            if(g.inventory[f].count>0){
                 const fishVal = fishData.find(x=>x.name===f)?.value || 10;
-                g.inventory[f]--;
-                g.money+=fishVal;
-                if(g.inventory[f]<=0) delete g.inventory[f];
+                const multiplier = g.inventory[f].multiplier || 1;
+                g.inventory[f].count--;
+                g.money+=Math.floor(fishVal*multiplier);
+                if(g.inventory[f].count<=0) delete g.inventory[f];
                 localStorage.setItem("game",JSON.stringify(g));
                 renderInventory();
                 updateStats();
@@ -156,10 +174,11 @@ function renderFish(){
     const fishList=document.getElementById("fishList");
     fishList.innerHTML="";
     fishData.forEach(f=>{
-        const d=document.createElement("div");
-        d.className="fish-card";
-        d.textContent=(g.caught[f.name]?"✅ ":"❌ ")+f.name;
-        fishList.appendChild(d);
+        const caught = g.caught[f.name]?"✅ ":"❌ ";
+        const div=document.createElement("div");
+        div.className="fish-card";
+        div.textContent=caught+f.name;
+        fishList.appendChild(div);
     });
 }
 
@@ -168,12 +187,12 @@ function changeLocation(){
     const loc=location.value;
     if(!g.unlocked[loc]){
         alert("Location locked! Unlock it first.");
-        location.value=g.location;
+        updateLocationDropdown();
         return;
     }
     g.location=loc;
     localStorage.setItem("game",JSON.stringify(g));
-    document.getElementById("fishBtn").classList.remove("disabled");
+    updateStats();
 }
 
 function unlockLocation(){
@@ -191,21 +210,15 @@ function unlockLocation(){
     g.unlocked[loc]=true;
     localStorage.setItem("game",JSON.stringify(g));
     updateStats();
+    updateLocationDropdown();
     alert(loc+" unlocked!");
-    document.getElementById("fishBtn").classList.remove("disabled");
 }
 
 // ----------- PROMO CODES -------------
 const promoCodes={
-"V7a93bXt34":()=>{ // $500, 10 bait, lv 5
-    g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; 
-},
-"OvErXoWnEr010aay":()=>{ // $10000, 100 bait, lv40
-    g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39;
-},
-"T9zxPrN4GF":()=>{ // $300, 5 bait, lv5
-    g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4;
-}
+"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
+"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
+"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
 };
 
 function usePromo(){
@@ -230,6 +243,5 @@ document.getElementById("resetBtn").onclick=()=>{
     }
 };
 </script>
-
 </body>
 </html>
