@@ -3,23 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <title>FishyLife - Fishing</title>
+
 <style>
-body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
-header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
-header a{color:white;text-decoration:none;}
-#track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:30px auto;position:relative;}
-#fish{width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:10px;}
-#box{height:40px;border:3px solid red;position:absolute;top:0;}
-.barWrap{width:520px;height:16px;background:#222;margin:6px auto;border-radius:8px;}
-.bar{height:100%;width:0%;background:lime;border-radius:8px;}
-button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
+body{
+    margin:0;
+    font-family:Arial;
+    background:#4db8ff;
+    color:white;
+    text-align:center;
+}
+header{
+    display:flex;
+    justify-content:space-around;
+    padding:10px;
+    background:rgba(0,0,0,.35);
+}
+header a{
+    color:white;
+    text-decoration:none;
+    font-size:18px;
+}
+
+#track{
+    width:520px;
+    height:40px;
+    background:#1f618d;
+    border-radius:25px;
+    margin:30px auto;
+    position:relative;
+}
+#fish{
+    width:20px;
+    height:20px;
+    background:white;
+    border-radius:50%;
+    position:absolute;
+    top:10px;
+}
+#box{
+    width:120px;
+    height:40px;
+    border:3px solid red;
+    position:absolute;
+    top:0;
+}
+.barWrap{
+    width:520px;
+    height:16px;
+    background:#222;
+    margin:6px auto;
+    border-radius:8px;
+}
+.bar{
+    height:100%;
+    width:0%;
+    background:lime;
+    border-radius:8px;
+}
+button{
+    padding:12px 18px;
+    font-size:20px;
+    margin:10px;
+    cursor:pointer;
+}
 </style>
 </head>
+
 <body>
 
 <header>
-<a href="index.html">🏠 Home</a>
-<a href="shop.html">🛒 Shop</a>
+    <a href="index.html">🏠 Home</a>
+    <a href="shop.html">🛒 Shop</a>
 </header>
 
 <h1>🎣 Fishing</h1>
@@ -30,22 +84,33 @@ button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
     <div id="box"></div>
 </div>
 
-<div class="barWrap"><div id="catchBar" class="bar"></div></div>
+<div class="barWrap">
+    <div id="catchBar" class="bar"></div>
+</div>
+
+<p id="sizeText"></p>
 
 <button id="left">⬅️</button>
 <button id="right">➡️</button>
 
 <script>
-/* ===== LOAD ===== */
-let g=JSON.parse(localStorage.getItem("game"));
-if(!g){location.href="index.html";}
-if(g.bait<=0){alert("No bait");location.href="shop.html";}
+/* ===== LOAD GAME ===== */
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){
+    alert("No save found!");
+    location.href="index.html";
+}
+if(g.bait <= 0){
+    alert("No bait!");
+    location.href="shop.html";
+}
 g.bait--;
+localStorage.setItem("game", JSON.stringify(g));
 
-/* ===== FISH ===== */
-const fish={name:"Bass",xp:20,value:20,rarity:1.2};
+/* ===== FISH DATA (SIMPLE & SAFE) ===== */
+const fish = { name:"Bass", xp:20, value:20, rarity:1.2 };
 
-/* ===== SIZE ===== */
+/* ===== SIZE SYSTEM (DISPLAY ONLY) ===== */
 function getSize(){
     const r=Math.random();
     if(r<0.5) return {name:"Small",mult:0.8};
@@ -54,15 +119,20 @@ function getSize(){
     return {name:"Giant",mult:3};
 }
 const size=getSize();
+document.getElementById("sizeText").textContent =
+    "Size: " + size.name;
 
-/* ===== VARS ===== */
+/* ===== VARIABLES ===== */
 const BAR=520;
-let fishX=250,fishDir=Math.random()<0.5?-1:1;
-let boxX=200,move=0;
-let boxW=120;
-let prog=0;
+let fishX=250;
+let fishDir=Math.random()<0.5?-1:1;
 
-/* ===== UI ===== */
+let boxX=200;
+let move=0;
+let boxW=120;
+
+let catchProg=0;
+
 box.style.width=boxW+"px";
 
 /* ===== INPUT ===== */
@@ -71,44 +141,41 @@ document.onkeydown=e=>{
     if(e.key==="ArrowRight") move=1;
 };
 document.onkeyup=()=>move=0;
+
 left.onmousedown=()=>move=-1;
 right.onmousedown=()=>move=1;
 left.onmouseup=right.onmouseup=()=>move=0;
 
-/* ===== LOOP ===== */
+/* ===== MAIN LOOP (ORIGINAL LOGIC) ===== */
 const loop=setInterval(()=>{
-    fishX+=fishDir*(2+fish.rarity);
-    if(Math.random()<0.02) fishDir*=-1;
-    if(fishX<0||fishX>BAR-20) fishDir*=-1;
-    fish.style.left=fishX+"px";
+    fishX += fishDir * (2 + fish.rarity);
+    if(Math.random()<0.02) fishDir *= -1;
+    if(fishX < 0 || fishX > BAR-20) fishDir *= -1;
+    fish.style.left = fishX + "px";
 
-    boxX+=move*6;
-    boxX=Math.max(0,Math.min(BAR-boxW,boxX));
-    box.style.left=boxX+"px";
+    boxX += move * 6;
+    boxX = Math.max(0, Math.min(BAR - boxW, boxX));
+    box.style.left = boxX + "px";
 
-    const center=fishX+10;
-    const inside=center>boxX&&center<boxX+boxW;
+    const center = fishX + 10;
+    const inside = center > boxX && center < boxX + boxW;
 
-    prog+=inside?0.8:-0.6*fish.rarity;
-    prog=Math.max(0,Math.min(100,prog));
-    catchBar.style.width=prog+"%";
+    if(inside) catchProg += 0.8;
+    else catchProg -= 0.6 * fish.rarity;
 
-    if(prog>=100){
+    catchProg = Math.max(0, Math.min(100, catchProg));
+    catchBar.style.width = catchProg + "%";
+
+    if(catchProg >= 100){
         clearInterval(loop);
-        const finalName=`${size.name} ${fish.name}`;
-        g.inventory[finalName]=(g.inventory[finalName]||0)+1;
-        g.xp+=Math.floor(fish.xp*size.mult);
-        g.money+=Math.floor(fish.value*size.mult);
 
-        // QUEST PROGRESS
-        if(g.quest){
-            if(g.quest.type==="catch") g.quest.progress++;
-            if(g.quest.type==="rare"&&fish.rarity>=1.5) g.quest.progress++;
-            if(g.quest.type==="money") g.quest.progress+=fish.value;
-        }
+        const finalName = `${size.name} ${fish.name}`;
+        g.inventory[finalName] = (g.inventory[finalName] || 0) + 1;
+        g.money += Math.floor(fish.value * size.mult);
+        g.xp += Math.floor(fish.xp * size.mult);
 
-        localStorage.setItem("game",JSON.stringify(g));
-        alert("Caught "+finalName);
+        localStorage.setItem("game", JSON.stringify(g));
+        alert("🐟 You caught a " + finalName + "!");
         location.href="index.html";
     }
 },16);
