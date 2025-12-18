@@ -99,20 +99,41 @@ document.getElementById("left").onmousedown = ()=>move=-1;
 document.getElementById("right").onmousedown = ()=>move=1;
 document.getElementById("left").onmouseup = document.getElementById("right").onmouseup = ()=>move=0;
 
-// ----- MUTATION CHANCES -----
+// ----- MUTATION AND SPECIAL ITEMS -----
 function mutateFish(f){
     let rand = Math.random();
-    let rodBonus = (rods[g.rod]?.name==="Lucky Rod")?0.05:0; // Lucky rod adds 5% extra
+    let rodBonus = (rods[g.rod]?.name==="Lucky Rod")?0.05:0; 
     let mutation="";
-    if(rand < 0.02 + rodBonus) mutation="Rainbow";       // super rare
-    else if(rand < 0.12 + rodBonus) mutation="Gold";      // 10% chance
-    else if(rand < 0.22 + rodBonus) mutation="Silver";    // 10% chance
+    if(rand < 0.02 + rodBonus) mutation="Rainbow";       
+    else if(rand < 0.12 + rodBonus) mutation="Gold";      
+    else if(rand < 0.22 + rodBonus) mutation="Silver";    
     return mutation;
 }
 
+// Chance to spawn special items instead of fish
+function specialCatch(){
+    let roll = Math.random();
+    if(roll < 0.03) return "Chest"; // 3% chance
+    if(roll < 0.06) return "Boot";  // next 3%
+    return null;
+}
+
 // ----- MAIN LOOP -----
+let special=null;
 const loop = setInterval(()=>{
-    fishX += fishDir * (2 + fish.rarity);
+    if(!special){
+        special = specialCatch();
+        if(special==="Chest"){
+            fishX = Math.random()*(BAR-20);
+            fishDir = Math.random()<0.5?-1:1;
+        }
+        if(special==="Boot"){
+            fishX = Math.random()*(BAR-20);
+            fishDir = Math.random()<0.5?-1:1;
+        }
+    }
+
+    fishX += fishDir * (2 + (fish?.rarity || 1));
     if(Math.random()<0.02) fishDir *= -1;
     if(fishX <0 || fishX>BAR-20) fishDir*=-1;
     document.getElementById("fish").style.left = fishX+"px";
@@ -124,33 +145,47 @@ const loop = setInterval(()=>{
     const center = fishX + 10;
     const inside = center > boxX && center < boxX + boxW;
     if(inside) catchProg += 0.8;
-    else catchProg -= 0.6 * fish.rarity;
+    else catchProg -= 0.6 * (fish?.rarity || 1);
 
     catchProg = Math.max(0, Math.min(100, catchProg));
     catchBar.style.width = catchProg+"%";
 
     if(catchProg>=100){
         clearInterval(loop);
-        // ----- APPLY MUTATION -----
-        let mutation = mutateFish(fish.name);
-        let valueMultiplier=1;
-        if(mutation==="Silver") valueMultiplier=1.10;
-        if(mutation==="Gold") valueMultiplier=1.15;
-        if(mutation==="Rainbow") valueMultiplier=10;
 
-        let finalFishName = fish.name + (mutation? " ("+mutation+")":"");
+        if(special==="Chest"){
+            let coins = Math.floor(Math.random()*50 + 20);
+            let xp = Math.floor(Math.random()*20 + 10);
+            g.money += coins;
+            g.xp += xp;
+            alert(`🪙 You found a Sunken Chest! +$${coins}, +${xp} XP`);
+        }
+        else if(special==="Boot"){
+            g.bait = Math.max(0, g.bait-1);
+            alert("👢 You caught a Boot! Lost 1 bait...");
+        }
+        else{
+            let mutation = mutateFish(fish.name);
+            let valueMultiplier=1;
+            if(mutation==="Silver") valueMultiplier=1.10;
+            if(mutation==="Gold") valueMultiplier=1.15;
+            if(mutation==="Rainbow") valueMultiplier=10;
 
-        g.inventory[finalFishName] = (g.inventory[finalFishName]||0)+1;
-        g.caught[fish.name] = true;
-        g.fishCount++;
-        g.xp += fish.xp;
+            let finalFishName = fish.name + (mutation? " ("+mutation+")":"");
+
+            g.inventory[finalFishName] = (g.inventory[finalFishName]||0)+1;
+            g.caught[fish.name] = true;
+            g.fishCount++;
+            g.xp += fish.xp;
+            alert(`🐟 You caught a ${finalFishName}! Value x${valueMultiplier}`);
+        }
+
         while(g.xp>=g.xpNeed){
             g.xp -= g.xpNeed;
             g.level++;
             g.xpNeed = Math.floor(g.xpNeed*1.5);
         }
         localStorage.setItem("game", JSON.stringify(g));
-        setTimeout(()=>alert(`🐟 You caught a ${finalFishName}! Value x${valueMultiplier}`),50);
         setTimeout(()=>location.href="index.html",100);
     }
 },16);
