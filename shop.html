@@ -14,8 +14,9 @@ header a{color:white;text-decoration:none;}
     padding:20px;
     border-radius:14px;
 }
-button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:6px;}
+button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:6px;cursor:pointer;}
 h1{text-align:center;}
+input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 </style>
 </head>
 <body>
@@ -32,55 +33,73 @@ h1{text-align:center;}
 <h2>💰 Money: $<span id="money"></span></h2>
 </div>
 
+<!-- BASIC BAIT -->
 <div class="card">
-<h2>🪱 Buy Bait</h2>
+<h2>🪱 Buy Basic Bait</h2>
 <p>Price: $5 per bait</p>
-<input type="number" id="baitQty" value="1" min="1" style="width:60px;">
+<input type="number" id="baitQty" value="1" min="1">
 <button onclick="buyBait()">Buy</button>
 </div>
 
+<!-- ADVANCED BAIT -->
 <div class="card">
-<h2🎣 Upgrade Rod</h2>
+<h2>🪱 Buy Advanced Bait</h2>
+<p>Price: $20 per bait</p>
+<input type="number" id="advBaitQty" value="1" min="1">
+<button onclick="buyAdvBait()">Buy</button>
+</div>
+
+<!-- ROD UPGRADE -->
+<div class="card">
+<h2>🎣 Upgrade Rod</h2>
 <p>Current Rod Tier: <span id="rodTier"></span></p>
 <p>Upgrade Cost: $<span id="rodPrice"></span></p>
 <button onclick="upgradeRod()">Upgrade Rod</button>
 </div>
 
 <script>
-// LOAD GAME
-let g = JSON.parse(sessionStorage.getItem("game"));
+// ----- LOAD GAME -----
+let g = JSON.parse(sessionStorage.getItem("game")) || {
+    level:1,xp:0,xpNeed:50,money:50,bait:5,rod:1,inventory:{},caught:{},fishCount:0,location:"Creek"
+};
 
-// SHOW STATS
+// ----- SHOW STATS -----
 function showStats(){
     document.getElementById("money").textContent = g.money;
     document.getElementById("rodTier").textContent = g.rod;
-    document.getElementById("rodPrice").textContent = g.rod*50; // cost scales with tier
+    document.getElementById("rodPrice").textContent = g.rod*50;
 }
 showStats();
 
-// BUY BAIT
+// ----- BUY BASIC BAIT -----
 function buyBait(){
     const qty = parseInt(document.getElementById("baitQty").value)||1;
     const cost = qty*5;
-    if(g.money<cost){
-        alert("Not enough money!");
-        return;
-    }
-    g.money-=cost;
-    g.bait+=qty;
+    if(g.money<cost){ alert("Not enough money!"); return; }
+    g.money -= cost;
+    g.bait = (g.bait||0) + qty;
     sessionStorage.setItem("game",JSON.stringify(g));
     showStats();
-    alert(`Bought ${qty} bait(s)!`);
+    alert(`Bought ${qty} basic bait(s)!`);
 }
 
-// UPGRADE ROD
+// ----- BUY ADVANCED BAIT -----
+function buyAdvBait(){
+    const qty = parseInt(document.getElementById("advBaitQty").value)||1;
+    const cost = qty*20;
+    if(g.money<cost){ alert("Not enough money!"); return; }
+    g.money -= cost;
+    g.bait = (g.bait||0) + qty*2; // optional: advanced bait counts double
+    sessionStorage.setItem("game",JSON.stringify(g));
+    showStats();
+    alert(`Bought ${qty} advanced bait(s)!`);
+}
+
+// ----- UPGRADE ROD -----
 function upgradeRod(){
     const price = g.rod*50;
-    if(g.money<price){
-        alert("Not enough money for rod upgrade!");
-        return;
-    }
-    g.money-=price;
+    if(g.money<price){ alert("Not enough money for rod upgrade!"); return; }
+    g.money -= price;
     g.rod++;
     sessionStorage.setItem("game",JSON.stringify(g));
     showStats();
@@ -90,4 +109,3 @@ function upgradeRod(){
 
 </body>
 </html>
-
