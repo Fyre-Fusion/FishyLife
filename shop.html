@@ -9,7 +9,6 @@ header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,
 header a{color:white;text-decoration:none;}
 .card{background:rgba(0,0,0,.35);width:360px;margin:20px auto;padding:20px;border-radius:14px;}
 button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:6px;cursor:pointer;}
-h1{text-align:center;}
 input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 </style>
 </head>
@@ -29,90 +28,81 @@ input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 
 <div class="card">
 <h2>🪱 Buy Basic Bait</h2>
-<p>Price: $5 per bait</p>
+<p>$5 each</p>
 <input type="number" id="baitQty" value="1" min="1">
 <button onclick="buyBait()">Buy</button>
 </div>
 
 <div class="card">
 <h2>🪱 Buy Advanced Bait</h2>
-<p>Price: $20 per bait (gives 2 bait each)</p>
-<input type="number" id="advBaitQty" value="1" min="1">
-<button onclick="buyAdvBait()">Buy</button>
+<p>$20 → gives 2 bait</p>
+<input type="number" id="advQty" value="1" min="1">
+<button onclick="buyAdv()">Buy</button>
 </div>
 
 <div class="card">
 <h2>🎣 Upgrade Rod</h2>
-<p>Current Rod: <span id="rodName"></span></p>
-<p>Upgrade Cost: $<span id="rodPrice"></span></p>
-<button onclick="upgradeRod()">Upgrade Rod</button>
+<p>Current: <span id="rodName"></span></p>
+<p>Cost: $<span id="rodPrice"></span></p>
+<button onclick="upgradeRod()">Upgrade</button>
 </div>
 
 <script>
-// ---------- DATA ----------
-const rods = [
-    {name:"Basic Rod",price:0},
-    {name:"Silver Rod",price:200},
-    {name:"Gold Rod",price:400},
-    {name:"Dark Rod",price:600},
-    {name:"Reef Rod",price:800},
-    {name:"Lava Rod",price:1200},
-    {name:"Clam Rod",price:1600},
-    {name:"Lucky Rod",price:1800}
+const rods=[
+{name:"Basic Rod",price:0},
+{name:"Silver Rod",price:200},
+{name:"Gold Rod",price:400},
+{name:"Dark Rod",price:600},
+{name:"Reef Rod",price:800},
+{name:"Lava Rod",price:1200},
+{name:"Clam Rod",price:1600},
+{name:"Lucky Rod",price:1800}
 ];
 
-// ---------- LOAD GAME ----------
-let g = JSON.parse(localStorage.getItem("game")) || null;
-if(!g){ alert("No save found!"); location.href="index.html"; }
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){location.href="index.html";}
 
-// ---------- SHOW STATS ----------
-function showStats(){
-    document.getElementById("money").textContent = g.money;
-    document.getElementById("rodName").textContent = g.rod;
-    const idx = rods.findIndex(r=>r.name===g.rod);
-    if(idx<rods.length-1){
-        document.getElementById("rodPrice").textContent = rods[idx+1].price;
-    } else document.getElementById("rodPrice").textContent = "MAX";
+function update(){
+    document.getElementById("money").textContent=g.money;
+    document.getElementById("rodName").textContent=g.rod;
+    const i=rods.findIndex(r=>r.name===g.rod);
+    document.getElementById("rodPrice").textContent =
+        i<rods.length-1 ? rods[i+1].price : "MAX";
 }
-showStats();
+update();
 
-// ---------- BUY BASIC BAIT ----------
 function buyBait(){
-    const qty = parseInt(document.getElementById("baitQty").value)||1;
-    const cost = qty*5;
-    if(g.money<cost){ alert("Not enough money!"); return; }
-    g.money -= cost;
-    g.bait = (g.bait||0)+qty;
-    localStorage.setItem("game",JSON.stringify(g));
-    showStats();
-    alert(`Bought ${qty} basic bait(s)!`);
+    const q=+baitQty.value||1;
+    const cost=q*5;
+    if(g.money<cost) return alert("Not enough money");
+    g.money-=cost;
+    g.bait+=q;
+    save();
 }
 
-// ---------- BUY ADVANCED BAIT ----------
-function buyAdvBait(){
-    const qty = parseInt(document.getElementById("advBaitQty").value)||1;
-    const cost = qty*20;
-    if(g.money<cost){ alert("Not enough money!"); return; }
-    g.money -= cost;
-    g.bait = (g.bait||0)+qty*2;
-    localStorage.setItem("game",JSON.stringify(g));
-    showStats();
-    alert(`Bought ${qty} advanced bait(s)!`);
+function buyAdv(){
+    const q=+advQty.value||1;
+    const cost=q*20;
+    if(g.money<cost) return alert("Not enough money");
+    g.money-=cost;
+    g.bait+=q*2;
+    save();
 }
 
-// ---------- UPGRADE ROD ----------
 function upgradeRod(){
-    const idx = rods.findIndex(r=>r.name===g.rod);
-    if(idx>=rods.length-1){ alert("Rod already at max!"); return; }
-    const nextRod = rods[idx+1];
-    if(g.money<nextRod.price){ alert("Not enough money for rod upgrade!"); return; }
-    g.money -= nextRod.price;
-    g.rod = nextRod.name;
+    const i=rods.findIndex(r=>r.name===g.rod);
+    if(i>=rods.length-1) return alert("Max rod");
+    const n=rods[i+1];
+    if(g.money<n.price) return alert("Not enough money");
+    g.money-=n.price;
+    g.rod=n.name;
+    save();
+}
+
+function save(){
     localStorage.setItem("game",JSON.stringify(g));
-    showStats();
-    alert(`Rod upgraded to ${nextRod.name}!`);
+    update();
 }
 </script>
-
 </body>
 </html>
