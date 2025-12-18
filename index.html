@@ -136,9 +136,13 @@ function renderInventory(){
 
         const sellBtn=document.createElement("button");
         sellBtn.textContent="Sell";
-        sellBtn.onclick=()=> {
+
+        // Use closure to capture correct fishName and value
+        sellBtn.addEventListener("click",()=>{
             if(g.inventory[fishName] > 0){
-                const fishVal = fishData.find(x=>x.name===fishName || x.name.endsWith(fishName))?.value || 10;
+                // Check base name for value
+                let baseName = fishName.split(" ").slice(-1)[0]; // take last word as base
+                const fishVal = fishData.find(f=>f.name===baseName)?.value || 10;
                 g.inventory[fishName]--;
                 g.money+=fishVal;
                 if(g.inventory[fishName]<=0) delete g.inventory[fishName];
@@ -146,7 +150,7 @@ function renderInventory(){
                 renderInventory();
                 updateStats();
             }
-        };
+        });
 
         div.appendChild(nameSpan);
         div.appendChild(sellBtn);
