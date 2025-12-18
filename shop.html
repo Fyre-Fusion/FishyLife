@@ -58,12 +58,10 @@ input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 </div>
 
 <script>
-// ----- LOAD GAME -----
-let g = JSON.parse(sessionStorage.getItem("game")) || {
-    level:1,xp:0,xpNeed:50,money:50,bait:5,rod:1,inventory:{},caught:{},fishCount:0,location:"Creek"
-};
+// LOAD GAME
+let g = JSON.parse(localStorage.getItem("game")) || {level:1,xp:0,xpNeed:50,money:50,bait:5,rod:1,inventory:{},caught:{},fishCount:0,location:"Creek"};
 
-// ----- SHOW STATS -----
+// SHOW STATS
 function showStats(){
     document.getElementById("money").textContent = g.money;
     document.getElementById("rodTier").textContent = g.rod;
@@ -71,37 +69,37 @@ function showStats(){
 }
 showStats();
 
-// ----- BUY BASIC BAIT -----
+// BUY BASIC BAIT
 function buyBait(){
     const qty = parseInt(document.getElementById("baitQty").value)||1;
     const cost = qty*5;
     if(g.money<cost){ alert("Not enough money!"); return; }
     g.money -= cost;
     g.bait = (g.bait||0) + qty;
-    sessionStorage.setItem("game",JSON.stringify(g));
+    localStorage.setItem("game",JSON.stringify(g));
     showStats();
     alert(`Bought ${qty} basic bait(s)!`);
 }
 
-// ----- BUY ADVANCED BAIT -----
+// BUY ADVANCED BAIT
 function buyAdvBait(){
     const qty = parseInt(document.getElementById("advBaitQty").value)||1;
     const cost = qty*20;
     if(g.money<cost){ alert("Not enough money!"); return; }
     g.money -= cost;
-    g.bait = (g.bait||0) + qty*2; // optional: advanced bait counts double
-    sessionStorage.setItem("game",JSON.stringify(g));
+    g.bait = (g.bait||0) + qty*2;
+    localStorage.setItem("game",JSON.stringify(g));
     showStats();
     alert(`Bought ${qty} advanced bait(s)!`);
 }
 
-// ----- UPGRADE ROD -----
+// UPGRADE ROD
 function upgradeRod(){
     const price = g.rod*50;
     if(g.money<price){ alert("Not enough money for rod upgrade!"); return; }
     g.money -= price;
     g.rod++;
-    sessionStorage.setItem("game",JSON.stringify(g));
+    localStorage.setItem("game",JSON.stringify(g));
     showStats();
     alert("Rod upgraded to tier "+g.rod+"!");
 }
