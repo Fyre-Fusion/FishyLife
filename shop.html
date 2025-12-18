@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FishyLife - Shop</title>
+<style>
+body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
+header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
+header a{color:white;text-decoration:none;}
+.card{
+    background:rgba(0,0,0,.35);
+    width:360px;
+    margin:20px auto;
+    padding:20px;
+    border-radius:14px;
+}
+button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:6px;}
+h1{text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+<a href="index.html">🏠 Home</a>
+<a href="fish.html">🎣 Fish</a>
+<a href="shop.html">🛒 Shop</a>
+</header>
+
+<h1>🛒 Shop</h1>
+
+<div class="card">
+<h2>💰 Money: $<span id="money"></span></h2>
+</div>
+
+<div class="card">
+<h2>🪱 Buy Bait</h2>
+<p>Price: $5 per bait</p>
+<input type="number" id="baitQty" value="1" min="1" style="width:60px;">
+<button onclick="buyBait()">Buy</button>
+</div>
+
+<div class="card">
+<h2🎣 Upgrade Rod</h2>
+<p>Current Rod Tier: <span id="rodTier"></span></p>
+<p>Upgrade Cost: $<span id="rodPrice"></span></p>
+<button onclick="upgradeRod()">Upgrade Rod</button>
+</div>
+
+<script>
+// LOAD GAME
+let g = JSON.parse(sessionStorage.getItem("game"));
+
+// SHOW STATS
+function showStats(){
+    document.getElementById("money").textContent = g.money;
+    document.getElementById("rodTier").textContent = g.rod;
+    document.getElementById("rodPrice").textContent = g.rod*50; // cost scales with tier
+}
+showStats();
+
+// BUY BAIT
+function buyBait(){
+    const qty = parseInt(document.getElementById("baitQty").value)||1;
+    const cost = qty*5;
+    if(g.money<cost){
+        alert("Not enough money!");
+        return;
+    }
+    g.money-=cost;
+    g.bait+=qty;
+    sessionStorage.setItem("game",JSON.stringify(g));
+    showStats();
+    alert(`Bought ${qty} bait(s)!`);
+}
+
+// UPGRADE ROD
+function upgradeRod(){
+    const price = g.rod*50;
+    if(g.money<price){
+        alert("Not enough money for rod upgrade!");
+        return;
+    }
+    g.money-=price;
+    g.rod++;
+    sessionStorage.setItem("game",JSON.stringify(g));
+    showStats();
+    alert("Rod upgraded to tier "+g.rod+"!");
+}
+</script>
+
+</body>
+</html>
+

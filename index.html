@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FishyLife</title>
+<style>
+body{margin:0;font-family:Arial;background:#4db8ff;color:white;}
+header{display:flex;justify-content:space-around;padding:12px;background:rgba(0,0,0,.35);}
+header a{color:white;text-decoration:none;font-size:18px;}
+header a.disabled{opacity:.4;pointer-events:none;}
+h1{text-align:center;}
+.card{
+    background:rgba(0,0,0,.35);
+    width:360px;
+    margin:20px auto;
+    padding:20px;
+    border-radius:14px;
+}
+button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:2px;}
+select{padding:6px;border-radius:6px;}
+#encyclopedia,#inventory{display:none;}
+.fish-card{background:rgba(255,255,255,.15);padding:6px;border-radius:6px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;}
+</style>
+</head>
+<body>
+
+<header>
+<a href="index.html">🏠 Home</a>
+<a id="fishBtn" href="fish.html">🎣 Fish</a>
+<a href="shop.html">🛒 Shop</a>
+<a href="#" onclick="toggle('inventory')">🎒 Bag</a>
+<a href="#" onclick="toggle('encyclopedia')">📖 Book</a>
+</header>
+
+<h1>🐟 FishyLife</h1>
+
+<div class="card">
+<p>⭐ Level: <span id="level"></span></p>
+<p>🧪 XP: <span id="xp"></span>/<span id="xpNeed"></span></p>
+<p>💰 Money: $<span id="money"></span></p>
+<p>🪱 Bait: <span id="bait"></span></p>
+
+<p>🌍 Location:
+<select id="location" onchange="changeLocation()">
+<option value="Creek">Creek</option>
+<option value="Lake">Lake</option>
+<option value="Ocean">Ocean</option>
+</select>
+<button onclick="unlockLocation()">Unlock</button>
+</p>
+</div>
+
+<div class="card" id="inventory">
+<h2>🎒 Inventory</h2>
+<div id="invList"></div>
+</div>
+
+<div class="card" id="encyclopedia">
+<h2>📖 Encyclopedia</h2>
+<div id="fishList"></div>
+</div>
+
+<script>
+// GLOBAL VARIABLES
+const fishData=[
+{name:"Minnow",value:10},{name:"Bluegill",value:15},{name:"Bass",value:20},
+{name:"Trout",value:25},{name:"Catfish",value:30},{name:"Salmon",value:40},
+{name:"Golden Carp",value:60},{name:"Mythic Koi",value:100},{name:"Ancient Leviathan",value:300}
+];
+
+const locationPrice={Lake:100,Ocean:250};
+
+let g;
+function loadGame(){
+    let saved=sessionStorage.getItem("game");
+    if(!saved){
+        g={level:1,xp:0,xpNeed:50,money:50,bait:5,rod:1,
+           fishCount:0,location:"Creek",inventory:{},caught:{},unlocked:{Creek:true,Lake:false,Ocean:false}};
+        sessionStorage.setItem("game",JSON.stringify(g));
+    } else {
+        g=JSON.parse(saved);
+    }
+    level.textContent=g.level;
+    xp.textContent=g.xp;
+    xpNeed.textContent=g.xpNeed;
+    money.textContent=g.money;
+    bait.textContent=g.bait;
+    location.value=g.location;
+    const fishBtn=document.getElementById("fishBtn");
+    fishBtn.classList.toggle("disabled",!g.unlocked[g.location]);
+}
+loadGame();
+
+// TOGGLE CARDS
+function toggle(id){
+    const e=document.getElementById(id);
+    if(!e) return;
+    if(e.style.display==="block"){
+        e.style.display="none";
+    } else {
+        e.style.display="block";
+        if(id==="inventory") renderInventory();
+        if(id==="encyclopedia") renderFish();
+    }
+}
+
+// RENDER INVENTORY
+function renderInventory(){
+    const invList=document.getElementById("invList");
+    if(!invList) return;
+    invList.innerHTML="";
+    for(let f in g.inventory){
+        const div=document.createElement("div");
+        div.className="fish-card";
+        const nameSpan=document.createElement("span");
+        nameSpan.textContent=`${f} x${g.inventory[f]}`;
+        const sellBtn=document.createElement("button");
+        sellBtn.textContent="Sell";
+        sellBtn.onclick=()=>{
+            if(g.inventory[f]>0){
+                const fishVal = fishData.find(x=>x.name===f)?.value || 10;
+                g.inventory[f]--;
+                g.money+=fishVal;
+                if(g.inventory[f]<=0) delete g.inventory[f];
+                sessionStorage.setItem("game",JSON.stringify(g));
+                renderInventory();
+                money.textContent=g.money;
+            }
+        };
+        div.appendChild(nameSpan);
+        div.appendChild(sellBtn);
+        invList.appendChild(div);
+    }
+}
+
+// ENCYLOPEDIA
+function renderFish(){
+    const fishList=document.getElementById("fishList");
+    if(!fishList) return;
+    fishList.innerHTML="";
+    fishData.forEach(f=>{
+        const d=document.createElement("div");
+        d.className="fish-card";
+        d.textContent=(g.caught[f.name]?"✅ ":"❌ ")+f.name;
+        fishList.appendChild(d);
+    });
+}
+
+// LOCATION
+function changeLocation(){
+    const loc=location.value;
+    if(!g.unlocked[loc]){
+        alert("Location locked! Unlock it first.");
+        location.value=g.location;
+        return;
+    }
+    g.location=loc;
+    sessionStorage.setItem("game",JSON.stringify(g));
+    const fishBtn=document.getElementById("fishBtn");
+    fishBtn.classList.remove("disabled");
+}
+
+function unlockLocation(){
+    const loc=location.value;
+    if(g.unlocked[loc]){
+        alert("Already unlocked!");
+        return;
+    }
+    const price=locationPrice[loc]||0;
+    if(g.money<price){
+        alert("Not enough money to unlock!");
+        return;
+    }
+    g.money-=price;
+    g.unlocked[loc]=true;
+    sessionStorage.setItem("game",JSON.stringify(g));
+    money.textContent=g.money;
+    alert(loc+" unlocked!");
+    document.getElementById("fishBtn").classList.remove("disabled");
+}
+</script>
+</body>
+</html>
+
