@@ -18,7 +18,7 @@ h1{text-align:center;}
 }
 button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:2px;cursor:pointer;}
 select{padding:6px;border-radius:6px;}
-#encyclopedia,#inventory,#quests{display:none;}
+#encyclopedia,#inventory,#questCard{display:none;}
 .fish-card{background:rgba(255,255,255,.15);padding:6px;border-radius:6px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;}
 input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-right:6px;}
 </style>
@@ -31,7 +31,6 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <a href="shop.html">🛒 Shop</a>
 <a href="#" onclick="toggle('inventory')">🎒 Bag</a>
 <a href="#" onclick="toggle('encyclopedia')">📖 Book</a>
-<a href="#" onclick="toggle('quests')">🗒️ Quests</a>
 </header>
 
 <h1>🐟 FishyLife</h1>
@@ -52,6 +51,11 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 </p>
 </div>
 
+<div class="card" id="questCard">
+<h2>🎯 Active Quest</h2>
+<div id="questInfo"></div>
+</div>
+
 <div class="card">
 <h2>🎟 Promo Code</h2>
 <input type="text" id="promoInput" placeholder="Enter code">
@@ -68,25 +72,37 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <div id="fishList"></div>
 </div>
 
-<div class="card" id="quests">
-<h2>🗒️ Quests</h2>
-<div id="questList"></div>
-</div>
-
-<button id="adminBtn" style="position:fixed;bottom:2px;right:2px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;" onclick="adminUnlock()">Administrator</button>
-<button id="resetBtn" style="position:fixed;bottom:2px;right:40px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;">Reset</button>
+<button id="resetBtn" style="position:fixed;bottom:2px;right:2px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;">reset</button>
+<button id="adminBtn" style="position:fixed;bottom:2px;left:2px;font-size:8px;padding:2px 4px;opacity:0.1;cursor:pointer;">administrator</button>
 
 <script>
-// --------------- GAME DATA ---------------
+// ----------------- GAME DATA -----------------
 const fishData=[
-{name:"Minnow",value:10},{name:"Bluegill",value:15},{name:"Bass",value:20},
-{name:"Trout",value:25},{name:"Catfish",value:30},{name:"Salmon",value:40},
-{name:"Peacock Bass",value:50},{name:"Red Snapper",value:45},{name:"Tilapia",value:35},
-{name:"Clownfish",value:30},{name:"Moonfish",value:55},{name:"Tigershark",value:150},
-{name:"Basa",value:40},{name:"Goldfish",value:20},{name:"Angelfish",value:22},
-{name:"Turtle",value:35},{name:"Kepper",value:35},{name:"Lemonshark",value:120},
-{name:"Lungfish",value:45},{name:"Squid",value:35},{name:"Crabs",value:20},{name:"Crawfish",value:15},
-{name:"Mussels",value:25},{name:"Clams",value:25},{name:"Abyssal Octopus",value:500}
+{name:"Minnow",value:10,category:"Common"},
+{name:"Bluegill",value:15,category:"Common"},
+{name:"Bass",value:20,category:"Uncommon"},
+{name:"Trout",value:25,category:"Uncommon"},
+{name:"Catfish",value:30,category:"Uncommon"},
+{name:"Salmon",value:40,category:"Rare"},
+{name:"Peacock Bass",value:50,category:"Rare"},
+{name:"Red Snapper",value:45,category:"Rare"},
+{name:"Tilapia",value:35,category:"Uncommon"},
+{name:"Clownfish",value:30,category:"Uncommon"},
+{name:"Moonfish",value:55,category:"Rare"},
+{name:"Tigershark",value:150,category:"Legendary"},
+{name:"Basa",value:40,category:"Uncommon"},
+{name:"Goldfish",value:20,category:"Common"},
+{name:"Angelfish",value:22,category:"Uncommon"},
+{name:"Turtle",value:35,category:"Rare"},
+{name:"Kepper",value:35,category:"Rare"},
+{name:"Lemonshark",value:120,category:"Legendary"},
+{name:"Lungfish",value:45,category:"Rare"},
+{name:"Squid",value:35,category:"Uncommon"},
+{name:"Crabs",value:20,category:"Common"},
+{name:"Crawfish",value:15,category:"Common"},
+{name:"Mussels",value:25,category:"Uncommon"},
+{name:"Clams",value:25,category:"Uncommon"},
+{name:"Abyssal Octopus",value:500,category:"Legendary"}
 ];
 
 const locationPrice={Lake:5000,Ocean:10000};
@@ -94,13 +110,7 @@ const rodData={
 "Basic Rod":0,"Silver Rod":200,"Gold Rod":400,"Dark Rod":600,"Reef Rod":800,"Lava Rod":1200,"Clam Rod":1600,"Lucky Rod":1800
 };
 
-const promoCodes={
-"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
-"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
-"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
-};
-
-// --------------- LOAD GAME ---------------
+// ----------------- LOAD GAME -----------------
 let g;
 function loadGame(){
     let saved=localStorage.getItem("game");
@@ -108,11 +118,13 @@ function loadGame(){
         g={
             level:1,xp:0,xpNeed:50,money:50,bait:5,rod:"Basic Rod",
             fishCount:0,location:"Creek",inventory:{},caught:{},
-            unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{},quests:[]
+            unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{},
+            activeQuest:{fish:"Minnow",target:5}, questProgress:{}
         };
         localStorage.setItem("game",JSON.stringify(g));
     } else g=JSON.parse(saved);
     updateStats();
+    renderQuest();
 }
 function updateStats(){
     document.getElementById("level").textContent=g.level;
@@ -125,7 +137,19 @@ function updateStats(){
 }
 loadGame();
 
-// --------------- TOGGLE CARDS ---------------
+// ----------------- QUESTS -----------------
+function renderQuest(){
+    const card=document.getElementById("questCard");
+    if(!g.activeQuest){ card.style.display="none"; return;}
+    card.style.display="block";
+    const info=document.getElementById("questInfo");
+    const fishName=g.activeQuest.fish;
+    const target=g.activeQuest.target;
+    const progress=g.questProgress[fishName]||0;
+    info.textContent=`Catch ${target} ${fishName}: ${progress}/${target}`;
+}
+
+// ----------------- TOGGLE CARDS -----------------
 function toggle(id){
     const e=document.getElementById(id);
     if(!e) return;
@@ -134,11 +158,10 @@ function toggle(id){
         e.style.display="block";
         if(id==="inventory") renderInventory();
         if(id==="encyclopedia") renderFish();
-        if(id==="quests") renderQuests();
     }
 }
 
-// --------------- INVENTORY ---------------
+// ----------------- INVENTORY -----------------
 function renderInventory(){
     const invList=document.getElementById("invList");
     invList.innerHTML="";
@@ -153,7 +176,7 @@ function renderInventory(){
             const fishName=f;
             return ()=>{
                 if(g.inventory[fishName]>0){
-                    const fishVal = fishData.find(x=>x.name===fishName.split(" ").pop())?.value || 10;
+                    const fishVal = fishData.find(x=>x.name===fishName)?.value || 10;
                     g.inventory[fishName]--;
                     g.money+=fishVal;
                     if(g.inventory[fishName]<=0) delete g.inventory[fishName];
@@ -169,38 +192,25 @@ function renderInventory(){
     }
 }
 
-// --------------- ENCYCLOPEDIA ---------------
+// ----------------- ENCYCLOPEDIA -----------------
 function renderFish(){
     const fishList=document.getElementById("fishList");
     fishList.innerHTML="";
     fishData.forEach(f=>{
+        const caught = g.caught[f.name] || false;
         const d=document.createElement("div");
         d.className="fish-card";
-        const caught = Object.keys(g.caught).some(name => name === f.name || name.endsWith(f.name));
-        d.textContent=(caught?"✅ ":"❌ ")+f.name;
+        d.textContent=(caught?"✅ ":"❌ ")+f.name+" ["+f.category+"]";
         fishList.appendChild(d);
     });
 }
 
-// --------------- QUESTS ---------------
-function renderQuests(){
-    const questList=document.getElementById("questList");
-    questList.innerHTML="";
-    if(!g.quests.length) questList.textContent="No active quests.";
-    else g.quests.forEach(q=>{
-        const d=document.createElement("div");
-        d.className="fish-card";
-        d.textContent=`${q.name} - ${q.progress}/${q.goal}`;
-        questList.appendChild(d);
-    });
-}
-
-// --------------- LOCATION ---------------
+// ----------------- LOCATION -----------------
 function changeLocation(){
-    const loc=document.getElementById("location").value;
+    const loc=location.value;
     if(!g.unlocked[loc]){
         alert("Location locked! Unlock it first.");
-        document.getElementById("location").value=g.location;
+        location.value=g.location;
         return;
     }
     g.location=loc;
@@ -209,7 +219,7 @@ function changeLocation(){
 }
 
 function unlockLocation(){
-    const loc=document.getElementById("location").value;
+    const loc=location.value;
     if(g.unlocked[loc]){
         alert("Already unlocked!");
         return;
@@ -227,7 +237,13 @@ function unlockLocation(){
     document.getElementById("fishBtn").classList.remove("disabled");
 }
 
-// --------------- PROMO CODES ---------------
+// ----------------- PROMO CODES -----------------
+const promoCodes={
+"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
+"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
+"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
+};
+
 function usePromo(){
     const code=document.getElementById("promoInput").value;
     if(!code){alert("Enter a code!"); return;}
@@ -238,24 +254,9 @@ function usePromo(){
     while(g.xp>=g.xpNeed){g.xp-=g.xpNeed; g.level++; g.xpNeed=Math.floor(g.xpNeed*1.5);}
     localStorage.setItem("game",JSON.stringify(g));
     updateStats();
-    alert("Promo code applied!");
 }
 
-// --------------- ADMIN -----
-function adminUnlock(){
-    const pwd = prompt("Enter administrator password:");
-    if(pwd==="68467"){
-        g.money=1000000;
-        g.bait=9999;
-        g.unlocked={Creek:true,Lake:true,Ocean:true};
-        fishData.forEach(f=>g.caught[f.name]=true);
-        localStorage.setItem("game",JSON.stringify(g));
-        updateStats();
-        alert("Administrator unlocked! All fish & locations available.");
-    } else alert("Wrong password.");
-}
-
-// --------------- RESET ---------------
+// ----------------- RESET -----------------
 document.getElementById("resetBtn").onclick=()=>{
     if(confirm("Reset all progress?")){
         localStorage.removeItem("game");
@@ -263,7 +264,22 @@ document.getElementById("resetBtn").onclick=()=>{
         location.reload();
     }
 };
-</script>
 
+// ----------------- ADMIN -----------------
+document.getElementById("adminBtn").onclick=()=>{
+    const pass = prompt("Enter admin password:");
+    if(pass==="68467"){
+        g.money=1000000;
+        g.bait=9999;
+        g.unlocked={Creek:true,Lake:true,Ocean:true};
+        g.caught={};
+        fishData.forEach(f=>{ g.caught[f.name]=true; g.inventory[f.name]=999; });
+        g.activeQuest=null;
+        localStorage.setItem("game",JSON.stringify(g));
+        alert("Admin activated! Everything unlocked.");
+        location.reload();
+    } else alert("Wrong password!");
+};
+</script>
 </body>
 </html>
