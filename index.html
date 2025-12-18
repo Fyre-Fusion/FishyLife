@@ -40,7 +40,6 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <p>🧪 XP: <span id="xp"></span>/<span id="xpNeed"></span></p>
 <p>💰 Money: $<span id="money"></span></p>
 <p>🪱 Bait: <span id="bait"></span></p>
-<p>🎣 Rod: <span id="rodName"></span></p>
 
 <p>🌍 Location:
 <select id="location" onchange="changeLocation()">
@@ -85,11 +84,7 @@ const fishData=[
 ];
 
 const locationPrice={Lake:5000,Ocean:10000};
-
-const rods=[
-{name:"Basic Rod",cost:0},{name:"Silver Rod",cost:200},{name:"Gold Rod",cost:400},{name:"Dark Rod",cost:600},
-{name:"Reef Rod",cost:800},{name:"Lava Rod",cost:1200},{name:"Clam Rod",cost:1600},{name:"Lucky Rod",cost:1800}
-];
+const rodPrice = {Basic:0, Silver:200, Gold:400, Dark:600, Reef:800, Lava:1200, Clam:1600, Lucky:1800};
 
 // ----------- LOAD GAME -------------
 let g;
@@ -97,16 +92,14 @@ function loadGame(){
     let saved=localStorage.getItem("game");
     if(!saved){
         g={
-            level:1,xp:0,xpNeed:50,money:50,bait:5,
-            rod:0,fishCount:0,location:"Creek",
-            inventory:{},caught:{},
+            level:1,xp:0,xpNeed:50,money:50,bait:5,rod:"Basic",
+            fishCount:0,location:"Creek",inventory:{},caught:{},
             unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{}
         };
         localStorage.setItem("game",JSON.stringify(g));
     } else g=JSON.parse(saved);
 
     updateStats();
-    updateLocationDropdown();
 }
 function updateStats(){
     level.textContent=g.level;
@@ -114,19 +107,10 @@ function updateStats(){
     xpNeed.textContent=g.xpNeed;
     money.textContent=g.money;
     bait.textContent=g.bait;
-    rodName.textContent=rods[g.rod].name;
-    document.getElementById("fishBtn").classList.toggle("disabled",!g.unlocked[g.location] || g.bait<=0);
+    location.value=g.location;
+    document.getElementById("fishBtn").classList.toggle("disabled",!g.unlocked[g.location]);
 }
 loadGame();
-
-// ----------- LOCATION DROPDOWN -------------
-function updateLocationDropdown(){
-    const sel=document.getElementById("location");
-    for(let opt of sel.options){
-        opt.disabled = !g.unlocked[opt.value];
-    }
-    sel.value=g.location;
-}
 
 // ----------- TOGGLE CARDS -------------
 function toggle(id){
@@ -145,27 +129,30 @@ function renderInventory(){
     const invList=document.getElementById("invList");
     invList.innerHTML="";
     for(let f in g.inventory){
-        const div=document.createElement("div");
-        div.className="fish-card";
-        const nameSpan=document.createElement("span");
-        nameSpan.textContent=`${g.inventory[f].mutation?g.inventory[f].mutation+" ":""}${f} x${g.inventory[f].count}`;
-        const sellBtn=document.createElement("button");
-        sellBtn.textContent="Sell";
-        sellBtn.onclick=()=>{
-            if(g.inventory[f].count>0){
-                const fishVal = fishData.find(x=>x.name===f)?.value || 10;
-                const multiplier = g.inventory[f].multiplier || 1;
-                g.inventory[f].count--;
-                g.money+=Math.floor(fishVal*multiplier);
-                if(g.inventory[f].count<=0) delete g.inventory[f];
-                localStorage.setItem("game",JSON.stringify(g));
+        const fishArr = g.inventory[f];
+        fishArr.forEach((fishObj, index) => {
+            const div=document.createElement("div");
+            div.className="fish-card";
+
+            const mutText = fishObj.mutation ? ` (${fishObj.mutation})` : "";
+            const nameSpan=document.createElement("span");
+            nameSpan.textContent = `${f}${mutText} x1`;
+
+            const sellBtn=document.createElement("button");
+            sellBtn.textContent="Sell";
+            sellBtn.onclick=()=>{
+                g.money += fishObj.value;
+                fishArr.splice(index,1);
+                if(fishArr.length === 0) delete g.inventory[f];
+                localStorage.setItem("game", JSON.stringify(g));
                 renderInventory();
                 updateStats();
-            }
-        };
-        div.appendChild(nameSpan);
-        div.appendChild(sellBtn);
-        invList.appendChild(div);
+            };
+
+            div.appendChild(nameSpan);
+            div.appendChild(sellBtn);
+            invList.appendChild(div);
+        });
     }
 }
 
@@ -174,11 +161,10 @@ function renderFish(){
     const fishList=document.getElementById("fishList");
     fishList.innerHTML="";
     fishData.forEach(f=>{
-        const caught = g.caught[f.name]?"✅ ":"❌ ";
-        const div=document.createElement("div");
-        div.className="fish-card";
-        div.textContent=caught+f.name;
-        fishList.appendChild(div);
+        const d=document.createElement("div");
+        d.className="fish-card";
+        d.textContent=(g.caught[f.name]?"✅ ":"❌ ")+f.name;
+        fishList.appendChild(d);
     });
 }
 
@@ -187,12 +173,12 @@ function changeLocation(){
     const loc=location.value;
     if(!g.unlocked[loc]){
         alert("Location locked! Unlock it first.");
-        updateLocationDropdown();
+        location.value=g.location;
         return;
     }
     g.location=loc;
     localStorage.setItem("game",JSON.stringify(g));
-    updateStats();
+    document.getElementById("fishBtn").classList.remove("disabled");
 }
 
 function unlockLocation(){
@@ -210,8 +196,8 @@ function unlockLocation(){
     g.unlocked[loc]=true;
     localStorage.setItem("game",JSON.stringify(g));
     updateStats();
-    updateLocationDropdown();
     alert(loc+" unlocked!");
+    document.getElementById("fishBtn").classList.remove("disabled");
 }
 
 // ----------- PROMO CODES -------------
@@ -243,5 +229,6 @@ document.getElementById("resetBtn").onclick=()=>{
     }
 };
 </script>
+
 </body>
 </html>
