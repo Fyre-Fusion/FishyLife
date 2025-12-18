@@ -10,8 +10,11 @@ header a{color:white;text-decoration:none;}
 #track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:30px auto;position:relative;}
 #fish{width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:10px;}
 #box{width:120px;height:40px;border:3px solid red;position:absolute;top:0;}
+.barWrap{width:520px;height:16px;background:#222;margin:6px auto;border-radius:8px;}
+.bar{height:100%;width:0%;border-radius:8px;}
+#catchBar{background:lime;}
+#rarityText{margin:6px;font-weight:bold;}
 button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
-#rarityText{margin-top:10px;font-size:20px;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -29,20 +32,18 @@ button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
     <div id="box"></div>
 </div>
 
-<p id="rarityText">Rarity: </p>
+<div class="barWrap"><div id="catchBar" class="bar"></div></div>
+<div id="rarityText">Rarity: </div>
 
 <button id="left">⬅️</button>
 <button id="right">➡️</button>
-
-<!-- Hidden admin button -->
-<button id="adminBtn" style="opacity:0;position:absolute;top:0;left:0;">Administrator</button>
 
 <script>
 // ----- LOAD GAME -----
 let g = JSON.parse(localStorage.getItem("game")) || null;
 if(!g){ alert("No save found! Returning to home."); location.href="index.html"; }
-if(g.bait<=0){ alert("No bait!"); location.href="shop.html"; throw new Error("No bait"); }
-g.bait--; // use bait when entering fishing
+if(g.bait <= 0){ alert("No bait!"); location.href="shop.html"; }
+else g.bait--;
 localStorage.setItem("game", JSON.stringify(g));
 
 // ----- FISH DATA PER LOCATION -----
@@ -52,9 +53,9 @@ Lake:[{name:"Trout",xp:25,rarity:1.1},{name:"Catfish",xp:30,rarity:1.4},{name:"S
 Ocean:[{name:"Red Snapper",xp:45,rarity:1.5},{name:"Moonfish",xp:55,rarity:1.7},{name:"Tigershark",xp:150,rarity:2.2},{name:"Basa",xp:40,rarity:1.2},{name:"Goldfish",xp:20,rarity:0.9},{name:"Angelfish",xp:22,rarity:1.0},{name:"Lemonshark",xp:120,rarity:2.0},{name:"Lungfish",xp:45,rarity:1.1},{name:"Squid",xp:35,rarity:1.0},{name:"Crabs",xp:20,rarity:0.9},{name:"Crawfish",xp:15,rarity:0.8},{name:"Mussels",xp:25,rarity:1.0},{name:"Clams",xp:25,rarity:1.0},{name:"Abyssal Octopus",xp:500,rarity:3.0}]
 };
 
-// ----- PICK FISH -----
-let list = fishByLoc[g.location];
-let fish = {...list[Math.floor(Math.random()*list.length)]};
+// ----- PICK RANDOM FISH -----
+const list = fishByLoc[g.location];
+const fish = {...list[Math.floor(Math.random()*list.length)]};
 
 // ----- VARIABLES -----
 const BAR = 520;
@@ -64,16 +65,17 @@ let boxW = 100 + (g.rod.includes("Rod")?1:0)*10;
 document.getElementById("box").style.width = boxW + "px";
 
 let catchProg = 0;
+const catchBar = document.getElementById("catchBar");
+const rarityText = document.getElementById("rarityText");
 
-// ----- RARITY TEXT -----
+// Determine rarity text
 function getRarityText(r){
-    if(r>=2.5) return "Abyssal";
-    if(r>=2) return "Legendary";
-    if(r>=1.5) return "Rare";
-    if(r>=1) return "Uncommon";
-    return "Common";
+    if(r < 0.8) return "Common";
+    else if(r < 1.2) return "Uncommon";
+    else if(r < 1.8) return "Rare";
+    else return "Legendary";
 }
-document.getElementById("rarityText").textContent = "Rarity: "+getRarityText(fish.rarity);
+rarityText.textContent = "Rarity: " + getRarityText(fish.rarity);
 
 // ----- INPUT -----
 document.onkeydown = e=>{ if(e.key==="ArrowLeft") move=-1; if(e.key==="ArrowRight") move=1; };
@@ -82,80 +84,64 @@ document.getElementById("left").onmousedown = ()=>move=-1;
 document.getElementById("right").onmousedown = ()=>move=1;
 document.getElementById("left").onmouseup = document.getElementById("right").onmouseup = ()=>move=0;
 
+// ----- MUTATION FUNCTION -----
+function applyMutation(f){
+    const rand = Math.random();
+    let mult = 1, name="";
+    if(rand<0.001 && f.name==="Clams"){ mult=25; name="Pearl"; }
+    else if(rand<0.005){ mult=10; name="Rainbow"; }
+    else if(rand<0.02){ mult=1.5; name="Gold"; }
+    else if(rand<0.05){ mult=1.1; name="Silver"; }
+    else if(rand<0.08){ mult=3; name="Raged"; }
+    else if(rand<0.12){ mult=6; name="Burnt"; }
+    else name="";
+    return {mut:name,mult};
+}
+
 // ----- MAIN LOOP -----
 const loop = setInterval(()=>{
-    // Move fish
     fishX += fishDir * (2 + fish.rarity);
     if(Math.random()<0.02) fishDir *= -1;
     if(fishX<0 || fishX>BAR-20) fishDir*=-1;
     document.getElementById("fish").style.left = fishX+"px";
 
-    // Move box
     boxX += move*6;
     boxX = Math.max(0, Math.min(BAR-boxW, boxX));
     document.getElementById("box").style.left = boxX+"px";
 
-    // Check if fish in box
     const center = fishX + 10;
     const inside = center > boxX && center < boxX + boxW;
     if(inside) catchProg += 0.8;
     else catchProg -= 0.6 * fish.rarity;
 
     catchProg = Math.max(0, Math.min(100, catchProg));
+    catchBar.style.width = catchProg + "%";
 
-    // Catch success
-    if(catchProg>=100){
+    if(catchProg >= 100){
         clearInterval(loop);
+        const mut = applyMutation(fish);
+        const fishName = mut.mut ? `${mut.mut} ${fish.name}` : fish.name;
+        const fishXP = Math.floor(fish.xp*mut.mult);
+        const fishVal = Math.floor((fish.value||fish.xp)*mut.mult);
 
-        // Mutation multiplier
-        const mutMult = 1;
-        const fishName = fish.name;
-        const fishXP = Math.floor(fish.xp*mutMult);
-        const fishVal = Math.floor(fish.xp*mutMult);
-
-        // Add to inventory
-        g.inventory[fishName]=(g.inventory[fishName]||0)+1;
-        g.caught[fish.name]=true;
+        g.inventory[fishName] = (g.inventory[fishName]||0)+1;
+        g.caught[fish.name] = true;
         g.fishCount++;
-        g.xp+=fishXP;
-
-        // Quests
-        if(!g.quests) g.quests = {};
-        if(!g.quests[fishName]) g.quests[fishName]=0;
-        g.quests[fishName]++;
+        g.xp += fishXP;
 
         // Level up
-        while(g.xp>=g.xpNeed){
-            g.xp-=g.xpNeed;
+        while(g.xp >= g.xpNeed){
+            g.xp -= g.xpNeed;
             g.level++;
-            g.xpNeed=Math.floor(g.xpNeed*1.5);
+            g.xpNeed = Math.floor(g.xpNeed*1.5);
         }
 
         localStorage.setItem("game", JSON.stringify(g));
-        setTimeout(()=>alert(`🐟 You caught a ${fishName}!\nXP: ${fishXP}`),50);
+        setTimeout(()=>alert(`🐟 You caught a ${fishName}! XP: ${fishXP}`),50);
         setTimeout(()=>location.href="index.html",100);
     }
 },16);
-
-// ----- ADMIN BUTTON -----
-document.getElementById("adminBtn").onclick=()=>{
-    const pass=prompt("Enter admin password:");
-    if(pass==="68467"){
-        g.money=1000000;
-        g.bait=9999;
-        g.level=99;
-        g.xp=g.xpNeed*10;
-        // Unlock all locations
-        g.unlocked={Creek:true,Lake:true,Ocean:true};
-        // Unlock all fish
-        fishByLoc.Creek.concat(fishByLoc.Lake, fishByLoc.Ocean).forEach(f=>{ g.inventory[f.name]=1; g.caught[f.name]=true; });
-        // Force next fish to be Abyssal Octopus
-        fish = {name:"Abyssal Octopus",xp:500,rarity:3.0};
-        localStorage.setItem("game", JSON.stringify(g));
-        alert("Administrator mode activated!");
-        location.reload();
-    } else alert("Incorrect password!");
-};
 </script>
+
 </body>
 </html>
