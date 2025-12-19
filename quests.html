@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FishyLife - Quests</title>
+<style>
+body { margin:0; font-family:Arial; background:#4db8ff; color:white; text-align:center; }
+header { display:flex; justify-content:space-around; padding:10px; background:rgba(0,0,0,.35); }
+header a { color:white; text-decoration:none; }
+.card { background:rgba(0,0,0,.35); width:360px; margin:20px auto; padding:20px; border-radius:14px; text-align:left; }
+button { padding:8px 14px; border:none; border-radius:8px; font-weight:bold; margin-top:6px; cursor:pointer; }
+h1 { text-align:center; }
+.quest-complete { color:lime; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<header>
+<a href="index.html">🏠 Home</a>
+<a href="fish.html">🎣 Fish</a>
+<a href="shop.html">🛒 Shop</a>
+<a href="aquarium.html">🐠 Aquarium</a>
+<a href="skills.html">🌳 Skills</a>
+</header>
+
+<h1>🎯 Quests</h1>
+
+<div id="questsContainer"></div>
+
+<script>
+// ----- LOAD GAME -----
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){ alert("No save found! Returning home."); location.href="index.html"; }
+
+// ----- SAMPLE QUEST DATA -----
+const quests = [
+    {id:"catchMinnow", title:"Catch 5 Minnows", fish:"Minnow", target:5, reward:{money:50,xp:20}},
+    {id:"catchBass", title:"Catch 3 Bass", fish:"Bass", target:3, reward:{money:100,xp:50}},
+    {id:"catchSalmon", title:"Catch 2 Salmon", fish:"Salmon", target:2, reward:{money:200,xp:100}}
+];
+
+// Initialize quest progress if not existing
+g.questProgress = g.questProgress || {};
+quests.forEach(q => { g.questProgress[q.id] = g.questProgress[q.id] || 0; });
+
+// ----- RENDER QUESTS -----
+function renderQuests(){
+    const container = document.getElementById("questsContainer");
+    container.innerHTML = "";
+    quests.forEach(q => {
+        const div = document.createElement("div");
+        div.className = "card";
+        const progress = g.questProgress[q.id];
+        const complete = progress >= q.target;
+
+        div.innerHTML = `
+            <h2>${q.title}</h2>
+            <p>Progress: ${progress}/${q.target} ${complete ? '<span class="quest-complete">✅ Complete!</span>' : ''}</p>
+            <p>Reward: $${q.reward.money}, ${q.reward.xp} XP</p>
+            ${!complete ? `<button onclick="claimQuest('${q.id}')">Claim Reward</button>` : ''}
+        `;
+        container.appendChild(div);
+    });
+}
+
+// ----- CLAIM QUEST -----
+function claimQuest(id){
+    const q = quests.find(x => x.id===id);
+    if(!q) return;
+    if(g.questProgress[id] < q.target){
+        alert("Quest not completed yet!");
+        return;
+    }
+    g.money += q.reward.money;
+    g.xp += q.reward.xp;
+
+    // Level up check
+    while(g.xp >= g.xpNeed){
+        g.xp -= g.xpNeed;
+        g.level++;
+        g.xpNeed = Math.floor(g.xpNeed*1.5);
+    }
+
+    // Reset quest progress if repeatable
+    g.questProgress[id] = 0;
+
+    localStorage.setItem("game", JSON.stringify(g));
+    alert(`Quest "${q.title}" completed! You earned $${q.reward.money} and ${q.reward.xp} XP.`);
+    renderQuests();
+}
+
+renderQuests();
+</script>
+
+</body>
+</html>
+
