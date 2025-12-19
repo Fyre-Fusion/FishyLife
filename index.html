@@ -2,159 +2,268 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>FishyLife – Fishing</title>
+<title>FishyLife</title>
 <style>
-body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
-header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
-header a{color:white;text-decoration:none;}
-#track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:20px auto;position:relative;overflow:hidden;}
-#fish{width:18px;height:18px;background:white;border-radius:50%;position:absolute;top:11px;}
-#box{height:40px;border:3px solid red;position:absolute;top:0;}
-.barWrap{width:520px;height:14px;background:#222;margin:6px auto;border-radius:8px;}
-.bar{height:100%;width:0%;border-radius:8px;}
-#catchBar{background:lime;}
-button{padding:12px 18px;font-size:18px;margin:6px;}
+body {
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#4db8ff;
+    color:white;
+    text-align:center;
+}
+header {
+    display:flex;
+    justify-content:space-around;
+    padding:12px;
+    background:rgba(0,0,0,.35);
+}
+header a {
+    color:white;
+    text-decoration:none;
+    font-size:18px;
+}
+h1 {
+    margin-top:20px;
+}
+.card {
+    background:rgba(0,0,0,.35);
+    width:360px;
+    margin:20px auto;
+    padding:20px;
+    border-radius:14px;
+}
+button {
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    margin:6px;
+    cursor:pointer;
+}
+select {
+    padding:6px;
+    border-radius:6px;
+}
+.fish-card {
+    background:rgba(255,255,255,.15);
+    padding:6px;
+    border-radius:6px;
+    margin:4px 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+input[type=text] {
+    padding:4px;
+    border-radius:6px;
+    border:none;
+    width:150px;
+    margin-right:6px;
+}
+#quests, #inventory, #encyclopedia, #skillsCard {
+    display:none;
+}
 </style>
 </head>
 <body>
 
 <header>
-<a href="index.html">🏠 Home</a>
+<a href="fish.html">🎣 Fish</a>
 <a href="shop.html">🛒 Shop</a>
+<a href="#" onclick="toggleCard('inventory')">🎒 Bag</a>
+<a href="#" onclick="toggleCard('encyclopedia')">📖 Encyclopedia</a>
+<a href="#" onclick="toggleCard('skillsCard')">🛠 Skills</a>
+<a href="#" onclick="toggleCard('quests')">🎯 Quests</a>
+<a href="aquarium.html">🐠 Aquarium</a>
 </header>
 
-<h1>🎣 Fishing</h1>
-<div>🌊 Depth: <span id="depthText"></span></div>
+<h1>🐟 FishyLife</h1>
 
-<div id="track">
-    <div id="fish"></div>
-    <div id="box"></div>
+<div class="card">
+    <p>⭐ Level: <span id="level"></span></p>
+    <p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
+    <p>💰 Money: $<span id="money"></span></p>
+    <p>🪱 Bait: <span id="bait"></span></p>
+    <p>🌍 Location: 
+        <select id="location" onchange="changeLocation()">
+            <option value="Creek">Creek</option>
+            <option value="Lake">Lake</option>
+            <option value="Ocean">Ocean</option>
+        </select>
+        <button onclick="unlockLocation()">Unlock</button>
+    </p>
 </div>
 
-<div class="barWrap"><div id="catchBar" class="bar"></div></div>
-<div id="rarityText"></div>
+<!-- QUESTS -->
+<div class="card" id="quests">
+<h2>🎯 Active Quest</h2>
+<div id="questInfo"></div>
+</div>
 
-<button id="left">⬅️</button>
-<button id="right">➡️</button>
+<!-- INVENTORY -->
+<div class="card" id="inventory">
+<h2>🎒 Inventory</h2>
+<div id="invList"></div>
+</div>
+
+<!-- ENCYCLOPEDIA -->
+<div class="card" id="encyclopedia">
+<h2>📖 Encyclopedia</h2>
+<div id="fishList"></div>
+</div>
+
+<!-- SKILLS -->
+<div class="card" id="skillsCard">
+<h2>🛠 Skills</h2>
+<div id="skillsList"></div>
+</div>
 
 <script>
-// ================= SAFE LOAD =================
+// ---------------- LOAD GAME ----------------
 let g = JSON.parse(localStorage.getItem("game"));
-if(!g){ location.href="index.html"; }
-
-if(g.bait <= 0){
-    alert("No bait!");
-    location.href="shop.html";
+if(!g){
+    g = {
+        level:1, xp:0, xpNeed:50, money:50, bait:5,
+        rod:"Basic Rod", location:"Creek",
+        unlocked:{Creek:true,Lake:false,Ocean:false},
+        inventory:{}, caught:{}, fishCount:0,
+        skillPoints:5, skills:{control:0,power:0,glide:0},
+        activeQuest:null, questProgress:{}
+    };
+    localStorage.setItem("game",JSON.stringify(g));
 }
 
-// consume bait ONCE
-g.bait--;
-localStorage.setItem("game",JSON.stringify(g));
+function updateStats(){
+    document.getElementById("level").textContent = g.level;
+    document.getElementById("xp").textContent = g.xp;
+    document.getElementById("xpNeed").textContent = g.xpNeed;
+    document.getElementById("money").textContent = g.money;
+    document.getElementById("bait").textContent = g.bait;
+    document.getElementById("location").value = g.location;
+}
 
-// ================= DEPTH =================
-const depth = Math.floor(Math.random()*100)+1;
-document.getElementById("depthText").textContent = depth+"m";
+updateStats();
 
-// ================= BAIT =================
-const baitType = g.baitType || "Basic";
-const baitBoost = {
-    Basic:1,
-    Advanced:1.2,
-    Shiny:1.6
-}[baitType] || 1;
-
-// ================= SKILLS (SAFE DEFAULTS) =================
-const skills = g.skills || {control:0,power:0,glide:0};
-
-// ================= FISH =================
-const fish = {
-    rarity:(1 + depth/90) * baitBoost,
-    xp:Math.floor(20 + depth*1.4)
-};
-
-document.getElementById("rarityText").textContent =
-fish.rarity < 1.2 ? "Common" :
-fish.rarity < 1.8 ? "Rare" : "Legendary";
-
-// ================= PHYSICS =================
-const BAR = 520;
-
-let fishX = 260;
-let fishV = (Math.random()*2+1) * (Math.random()<0.5?-1:1);
-
-let boxX = 200;
-let boxV = 0;
-
-const accel = 1.1 + skills.power*0.3;
-const friction = 0.9 - skills.glide*0.02;
-
-const boxW = 90 + skills.control*15;
-document.getElementById("box").style.width = boxW+"px";
-
-let input = 0;
-let catchProg = 0;
-let gameOver = false;
-
-const bar = document.getElementById("catchBar");
-
-// ================= INPUT =================
-document.onkeydown = e=>{
-    if(e.key==="ArrowLeft") input=-1;
-    if(e.key==="ArrowRight") input=1;
-};
-document.onkeyup = ()=>input=0;
-
-document.getElementById("left").onmousedown = ()=>input=-1;
-document.getElementById("right").onmousedown = ()=>input=1;
-document.getElementById("left").onmouseup =
-document.getElementById("right").onmouseup = ()=>input=0;
-
-// ================= MAIN LOOP =================
-const loop = setInterval(()=>{
-    if(gameOver) return;
-
-    // Fish motion
-    fishV += (Math.random()-0.5)*0.3*fish.rarity;
-    fishX += fishV;
-    if(fishX<0 || fishX>BAR-18) fishV*=-1;
-    document.getElementById("fish").style.left = fishX+"px";
-
-    // Box physics (velocity + inertia)
-    boxV += input * accel;
-    boxV *= friction;
-    boxX += boxV;
-    boxX = Math.max(0, Math.min(BAR-boxW, boxX));
-    document.getElementById("box").style.left = boxX+"px";
-
-    // Catch logic
-    const center = fishX + 9;
-    const inside = center > boxX && center < boxX + boxW;
-
-    catchProg += inside
-        ? (1 + skills.power*0.6)
-        : -(0.8 + fish.rarity*0.4);
-
-    catchProg = Math.max(0, Math.min(100, catchProg));
-    bar.style.width = catchProg + "%";
-
-    // WIN
-    if(catchProg >= 100){
-        gameOver = true;
-        clearInterval(loop);
-
-        g.xp += fish.xp;
-        g.inventory ??= {};
-        g.inventory["Fish"] = (g.inventory["Fish"] || 0) + 1;
-
-        localStorage.setItem("game",JSON.stringify(g));
-
-        setTimeout(()=>{
-            alert(`🐟 Caught fish!\nDepth: ${depth}m\n+${fish.xp} XP`);
-            location.href="index.html";
-        },200);
+// ---------------- TOGGLE CARDS ----------------
+function toggleCard(id){
+    const el = document.getElementById(id);
+    if(el.style.display==="block") el.style.display="none";
+    else{
+        el.style.display="block";
+        if(id==="inventory") renderInventory();
+        if(id==="encyclopedia") renderFish();
+        if(id==="skillsCard") renderSkills();
+        if(id==="quests") renderQuest();
     }
-},16);
+}
+
+// ---------------- INVENTORY ----------------
+function renderInventory(){
+    const invList = document.getElementById("invList");
+    invList.innerHTML = "";
+    for(let f in g.inventory){
+        const div = document.createElement("div");
+        div.className = "fish-card";
+        div.textContent = `${f} x${g.inventory[f]}`;
+        invList.appendChild(div);
+    }
+}
+
+// ---------------- ENCYCLOPEDIA ----------------
+const fishData = [
+{name:"Minnow",category:"Common"},
+{name:"Bluegill",category:"Common"},
+{name:"Bass",category:"Uncommon"},
+{name:"Trout",category:"Uncommon"},
+{name:"Catfish",category:"Uncommon"},
+{name:"Salmon",category:"Rare"},
+{name:"Peacock Bass",category:"Rare"},
+{name:"Red Snapper",category:"Rare"},
+{name:"Tilapia",category:"Uncommon"},
+{name:"Clownfish",category:"Uncommon"},
+{name:"Moonfish",category:"Rare"},
+{name:"Tigershark",category:"Legendary"},
+{name:"Basa",category:"Uncommon"},
+{name:"Goldfish",category:"Common"},
+{name:"Angelfish",category:"Uncommon"},
+{name:"Turtle",category:"Rare"},
+{name:"Kepper",category:"Rare"},
+{name:"Lemonshark",category:"Legendary"},
+{name:"Lungfish",category:"Rare"},
+{name:"Squid",category:"Uncommon"},
+{name:"Crabs",category:"Common"},
+{name:"Crawfish",category:"Common"},
+{name:"Mussels",category:"Uncommon"},
+{name:"Clams",category:"Uncommon"},
+{name:"Abyssal Octopus",category:"Legendary"}
+];
+
+function renderFish(){
+    const fishList = document.getElementById("fishList");
+    fishList.innerHTML = "";
+    fishData.forEach(f=>{
+        const caught = g.caught[f.name] || false;
+        const d = document.createElement("div");
+        d.className = "fish-card";
+        d.textContent = (caught?"✅ ":"❌ ") + f.name + " [" + f.category + "]";
+        fishList.appendChild(d);
+    });
+}
+
+// ---------------- SKILLS ----------------
+function renderSkills(){
+    const container = document.getElementById("skillsList");
+    container.innerHTML = "";
+    const sp = document.createElement("div");
+    sp.textContent = `Skill Points: ${g.skillPoints}`;
+    container.appendChild(sp);
+
+    for(let key in g.skills){
+        const div = document.createElement("div");
+        div.className = "skill-line";
+        div.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)}: ${g.skills[key]}`;
+        container.appendChild(div);
+    }
+}
+
+// ---------------- QUESTS ----------------
+function renderQuest(){
+    const card = document.getElementById("quests");
+    const info = document.getElementById("questInfo");
+    if(!g.activeQuest){ card.style.display="none"; return; }
+    card.style.display="block";
+    const fishName = g.activeQuest.fish;
+    const target = g.activeQuest.target;
+    const progress = g.questProgress[fishName]||0;
+    info.textContent = `Catch ${target} ${fishName}: ${progress}/${target}`;
+}
+
+// ---------------- LOCATION ----------------
+function changeLocation(){
+    const loc = document.getElementById("location").value;
+    if(!g.unlocked[loc]){
+        alert("Location locked! Unlock first.");
+        document.getElementById("location").value = g.location;
+        return;
+    }
+    g.location = loc;
+    localStorage.setItem("game",JSON.stringify(g));
+    updateStats();
+}
+
+function unlockLocation(){
+    const loc = document.getElementById("location").value;
+    const cost = {Lake:5000, Ocean:10000}[loc]||0;
+    if(g.unlocked[loc]){ alert("Already unlocked!"); return; }
+    if(g.money < cost){ alert("Not enough money!"); return; }
+    g.money -= cost;
+    g.unlocked[loc] = true;
+    localStorage.setItem("game",JSON.stringify(g));
+    updateStats();
+    alert(loc + " unlocked!");
+}
 </script>
 
 </body>
 </html>
+
