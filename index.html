@@ -7,6 +7,7 @@
 body{margin:0;font-family:Arial;background:#4db8ff;color:white;}
 header{display:flex;justify-content:space-around;padding:12px;background:rgba(0,0,0,.35);}
 header a{color:white;text-decoration:none;font-size:18px;}
+header a.disabled{opacity:.4;pointer-events:none;}
 h1{text-align:center;}
 .card{
     background:rgba(0,0,0,.35);
@@ -20,18 +21,18 @@ select{padding:6px;border-radius:6px;}
 #encyclopedia,#inventory,#questCard{display:none;}
 .fish-card{background:rgba(255,255,255,.15);padding:6px;border-radius:6px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;}
 input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-right:6px;}
-.barWrap{width:100%;background:#222;margin:6px 0;border-radius:8px;height:16px;}
-.bar{height:100%;width:0%;border-radius:8px;}
+#resetBtn{position:fixed;bottom:2px;right:2px;font-size:8px;padding:2px 4px;opacity:0.5;cursor:pointer;}
 </style>
 </head>
 <body>
 
 <header>
 <a href="index.html">🏠 Home</a>
-<a href="fish.html">🎣 Fish</a>
+<a id="fishBtn" href="fish.html">🎣 Fish</a>
 <a href="shop.html">🛒 Shop</a>
 <a href="#" onclick="toggle('inventory')">🎒 Bag</a>
 <a href="#" onclick="toggle('encyclopedia')">📖 Book</a>
+<a href="quests.html">📜 Quests</a>
 </header>
 
 <h1>🐟 FishyLife</h1>
@@ -39,10 +40,8 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <div class="card">
 <p>⭐ Level: <span id="level"></span></p>
 <p>🧪 XP: <span id="xp"></span>/<span id="xpNeed"></span></p>
-<div class="barWrap"><div id="xpBar" class="bar"></div></div>
 <p>💰 Money: $<span id="money"></span></p>
 <p>🪱 Bait: <span id="bait"></span></p>
-<p>🎣 Rod: <span id="rod"></span></p>
 
 <p>🌍 Location:
 <select id="location" onchange="changeLocation()">
@@ -75,7 +74,7 @@ input[type=text]{padding:4px;border-radius:6px;border:none;width:150px;margin-ri
 <div id="fishList"></div>
 </div>
 
-<button id="resetBtn" style="position:fixed;bottom:2px;right:2px;font-size:8px;padding:2px 4px;opacity:0.2;cursor:pointer;">reset</button>
+<button id="resetBtn">Reset</button>
 
 <script>
 // ----------------- GAME DATA -----------------
@@ -111,44 +110,33 @@ const locationPrice={Lake:5000,Ocean:10000};
 const rodData={
 "Basic Rod":0,"Silver Rod":200,"Gold Rod":400,"Dark Rod":600,"Reef Rod":800,"Lava Rod":1200,"Clam Rod":1600,"Lucky Rod":1800
 };
-const promoCodes={
-"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
-"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
-"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
-};
 
 // ----------------- LOAD GAME -----------------
-let g = JSON.parse(localStorage.getItem("game"));
-if(!g){
-    g={
-        level:1,xp:0,xpNeed:50,money:50,bait:5,rod:"Basic Rod",
-        fishCount:0,location:"Creek",inventory:{},caught:{},
-        unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{},
-        activeQuest:{fish:"Minnow",target:5}, questProgress:{}
-    };
-    localStorage.setItem("game",JSON.stringify(g));
-} else {
-    // ensure defaults exist
-    g.inventory = g.inventory || {};
-    g.caught = g.caught || {};
-    g.usedCodes = g.usedCodes || {};
-    g.unlocked = g.unlocked || {Creek:true,Lake:false,Ocean:false};
+let g;
+function loadGame(){
+    let saved=localStorage.getItem("game");
+    if(!saved){
+        g={
+            level:1,xp:0,xpNeed:50,money:50,bait:5,rod:"Basic Rod",
+            fishCount:0,location:"Creek",inventory:{},caught:{},
+            unlocked:{Creek:true,Lake:false,Ocean:false},usedCodes:{},
+            activeQuest:{fish:"Minnow",target:5}, questProgress:{}
+        };
+        localStorage.setItem("game",JSON.stringify(g));
+    } else g=JSON.parse(saved);
+    updateStats();
+    renderQuest();
 }
-updateStats();
-renderQuest();
-renderInventory();
-renderFish();
-
-// ----------------- STATS -----------------
 function updateStats(){
     document.getElementById("level").textContent=g.level;
     document.getElementById("xp").textContent=g.xp;
     document.getElementById("xpNeed").textContent=g.xpNeed;
     document.getElementById("money").textContent=g.money;
     document.getElementById("bait").textContent=g.bait;
-    document.getElementById("rod").textContent=g.rod;
     document.getElementById("location").value=g.location;
+    document.getElementById("fishBtn").classList.toggle("disabled",!g.unlocked[g.location]);
 }
+loadGame();
 
 // ----------------- QUESTS -----------------
 function renderQuest(){
@@ -166,30 +154,33 @@ function renderQuest(){
 function toggle(id){
     const e=document.getElementById(id);
     if(!e) return;
-    e.style.display=(e.style.display==="block")?"none":"block";
-    if(id==="inventory") renderInventory();
-    if(id==="encyclopedia") renderFish();
+    if(e.style.display==="block") e.style.display="none";
+    else{
+        e.style.display="block";
+        if(id==="inventory") renderInventory();
+        if(id==="encyclopedia") renderFish();
+    }
 }
 
 // ----------------- INVENTORY -----------------
 function renderInventory(){
     const invList=document.getElementById("invList");
     invList.innerHTML="";
-    for(const [fishName, qty] of Object.entries(g.inventory)){
+    for(let f in g.inventory){
         const div=document.createElement("div");
         div.className="fish-card";
         const nameSpan=document.createElement("span");
-        nameSpan.textContent=`${fishName} x${qty}`;
+        nameSpan.textContent=`${f} x${g.inventory[f]}`;
         const sellBtn=document.createElement("button");
         sellBtn.textContent="Sell";
-        sellBtn.onclick=(()=>{ 
-            const f = fishName; 
+        sellBtn.onclick=(()=>{
+            const fishName=f;
             return ()=>{
-                if(g.inventory[f] > 0){
-                    const fishVal = fishData.find(x=>x.name===f)?.value || 10;
-                    g.inventory[f]--;
-                    g.money += fishVal;
-                    if(g.inventory[f]<=0) delete g.inventory[f];
+                if(g.inventory[fishName]>0){
+                    const fishVal = fishData.find(x=>x.name===fishName)?.value || 10;
+                    g.inventory[fishName]--;
+                    g.money+=fishVal;
+                    if(g.inventory[fishName]<=0) delete g.inventory[fishName];
                     localStorage.setItem("game",JSON.stringify(g));
                     renderInventory();
                     updateStats();
@@ -217,18 +208,19 @@ function renderFish(){
 
 // ----------------- LOCATION -----------------
 function changeLocation(){
-    const loc=document.getElementById("location").value;
+    const loc=location.value;
     if(!g.unlocked[loc]){
         alert("Location locked! Unlock it first.");
-        document.getElementById("location").value=g.location;
+        location.value=g.location;
         return;
     }
     g.location=loc;
     localStorage.setItem("game",JSON.stringify(g));
+    document.getElementById("fishBtn").classList.remove("disabled");
 }
 
 function unlockLocation(){
-    const loc=document.getElementById("location").value;
+    const loc=location.value;
     if(g.unlocked[loc]){
         alert("Already unlocked!");
         return;
@@ -243,9 +235,16 @@ function unlockLocation(){
     localStorage.setItem("game",JSON.stringify(g));
     updateStats();
     alert(loc+" unlocked!");
+    document.getElementById("fishBtn").classList.remove("disabled");
 }
 
 // ----------------- PROMO CODES -----------------
+const promoCodes={
+"V7a93bXt34":()=>{ g.money+=500; g.bait+=10; g.xp+=g.xpNeed*4; },
+"OvErXoWnEr010aay":()=>{ g.money+=10000; g.bait+=100; g.xp+=g.xpNeed*39; },
+"T9zxPrN4GF":()=>{ g.money+=300; g.bait+=5; g.xp+=g.xpNeed*4; }
+};
+
 function usePromo(){
     const code=document.getElementById("promoInput").value;
     if(!code){alert("Enter a code!"); return;}
