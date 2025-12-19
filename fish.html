@@ -2,18 +2,21 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>FishyLife – Fishing</title>
+<title>FishyLife - Fishing</title>
 <style>
 body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
 header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
 header a{color:white;text-decoration:none;}
-#track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:20px auto;position:relative;overflow:hidden;}
-#fish{width:18px;height:18px;background:white;border-radius:50%;position:absolute;top:11px;}
-#box{height:40px;border:3px solid red;position:absolute;top:0;}
-.barWrap{width:520px;height:14px;background:#222;margin:6px auto;border-radius:8px;}
+#track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:30px auto;position:relative;}
+#fish{width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:10px;}
+#box{width:120px;height:40px;border:3px solid red;position:absolute;top:0;}
+.barWrap{width:520px;height:16px;background:#222;margin:6px auto;border-radius:8px;}
 .bar{height:100%;width:0%;border-radius:8px;}
 #catchBar{background:lime;}
-button{padding:12px 18px;font-size:18px;margin:6px;}
+#rarityText{margin:6px;font-weight:bold;}
+button{padding:12px 18px;font-size:20px;margin:10px;cursor:pointer;}
+#inventoryCard{display:none; background:rgba(0,0,0,.35); width:360px; margin:20px auto;padding:20px;border-radius:14px;}
+.fish-card{background:rgba(255,255,255,.15);padding:6px;border-radius:6px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;}
 </style>
 </head>
 <body>
@@ -21,10 +24,12 @@ button{padding:12px 18px;font-size:18px;margin:6px;}
 <header>
 <a href="index.html">🏠 Home</a>
 <a href="shop.html">🛒 Shop</a>
+<a href="#" onclick="toggleInventory()">🎒 Bag</a>
+<a href="quests.html">🎯 Quests</a>
 </header>
 
 <h1>🎣 Fishing</h1>
-<div>🌊 Depth: <span id="depthText"></span></div>
+<p>Keep the fish inside the red box to catch it!</p>
 
 <div id="track">
     <div id="fish"></div>
@@ -32,129 +37,199 @@ button{padding:12px 18px;font-size:18px;margin:6px;}
 </div>
 
 <div class="barWrap"><div id="catchBar" class="bar"></div></div>
-<div id="rarityText"></div>
+<div id="rarityText">Rarity: </div>
 
 <button id="left">⬅️</button>
 <button id="right">➡️</button>
 
-<script>
-// ================= SAFE LOAD =================
-let g = JSON.parse(localStorage.getItem("game"));
-if(!g){ location.href="index.html"; }
+<div id="inventoryCard">
+<h2>🎒 Inventory</h2>
+<div id="invList"></div>
+</div>
 
-if(g.bait <= 0){
-    alert("No bait!");
-    location.href="shop.html";
+<script>
+// ----- LOAD GAME -----
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){ alert("No save found!"); location.href="index.html"; }
+
+// Check bait
+if(g.bait <= 0){ alert("No bait!"); location.href="shop.html"; }
+else { g.bait--; localStorage.setItem("game", JSON.stringify(g)); }
+
+// ----- FISH DATA PER LOCATION -----
+const fishByLoc={
+Creek:[
+  {name:"Minnow",xp:10,value:10,rarity:0.6},
+  {name:"Bluegill",xp:15,value:15,rarity:0.9},
+  {name:"Bass",xp:20,value:20,rarity:1.2},
+  {name:"Tilapia",xp:25,value:35,rarity:1.0},
+  {name:"Clownfish",xp:30,value:30,rarity:1.1}
+],
+Lake:[
+  {name:"Trout",xp:25,value:25,rarity:1.1},
+  {name:"Catfish",xp:30,value:30,rarity:1.4},
+  {name:"Salmon",xp:40,value:40,rarity:1.7},
+  {name:"Peacock Bass",xp:50,value:50,rarity:1.6},
+  {name:"Turtle",xp:35,value:35,rarity:1.0},
+  {name:"Kepper",xp:35,value:35,rarity:1.0}
+],
+Ocean:[
+  {name:"Red Snapper",xp:45,value:45,rarity:1.5},
+  {name:"Moonfish",xp:55,value:55,rarity:1.7},
+  {name:"Tigershark",xp:150,value:150,rarity:2.2},
+  {name:"Basa",xp:40,value:40,rarity:1.2},
+  {name:"Goldfish",xp:20,value:20,rarity:0.9},
+  {name:"Angelfish",xp:22,value:22,rarity:1.0},
+  {name:"Lemonshark",xp:120,value:120,rarity:2.0},
+  {name:"Lungfish",xp:45,value:45,rarity:1.1},
+  {name:"Squid",xp:35,value:35,rarity:1.0},
+  {name:"Crabs",xp:20,value:20,rarity:0.9},
+  {name:"Crawfish",xp:15,value:15,rarity:0.8},
+  {name:"Mussels",xp:25,value:25,rarity:1.0},
+  {name:"Clams",xp:25,value:25,rarity:1.0},
+  {name:"Abyssal Octopus",xp:500,value:500,rarity:3.0}
+]
+};
+
+// ----- PICK RANDOM FISH -----
+const list = fishByLoc[g.location];
+const fish = {...list[Math.floor(Math.random()*list.length)]};
+
+// ----- VARIABLES -----
+const BAR = 520;
+let fishX = 250, fishDir = Math.random()<0.5?-1:1;
+let boxX = 200, boxVel = 0;
+let boxW = 100 + (g.rod.includes("Rod")?1:0)*10;
+document.getElementById("box").style.width = boxW + "px";
+
+let catchProg = 0;
+const catchBar = document.getElementById("catchBar");
+const rarityText = document.getElementById("rarityText");
+
+function getRarityText(r){
+    if(r < 0.8) return "Common";
+    else if(r < 1.2) return "Uncommon";
+    else if(r < 1.8) return "Rare";
+    else return "Legendary";
+}
+rarityText.textContent = "Rarity: " + getRarityText(fish.rarity);
+
+// ----- INPUT -----
+let move = 0;
+document.onkeydown = e=>{ if(e.key==="ArrowLeft") move=-1; if(e.key==="ArrowRight") move=1; };
+document.onkeyup = ()=>move=0;
+document.getElementById("left").onmousedown = ()=>move=-1;
+document.getElementById("right").onmousedown = ()=>move=1;
+document.getElementById("left").onmouseup = document.getElementById("right").onmouseup = ()=>move=0;
+
+// ----- MUTATION & EXTRA LOOT -----
+function applyMutation(f){
+    const rand = Math.random();
+    let mult = 1, name="";
+    if(rand<0.001 && f.name==="Clams"){ mult=25; name="Pearl"; }
+    else if(rand<0.005){ mult=10; name="Rainbow"; }
+    else if(rand<0.02){ mult=1.5; name="Gold"; }
+    else if(rand<0.05){ mult=1.1; name="Silver"; }
+    else if(rand<0.08){ mult=3; name="Raged"; }
+    else if(rand<0.12){ mult=6; name="Burnt"; }
+    else name="";
+    return {mut:name,mult};
 }
 
-// consume bait ONCE
-g.bait--;
-localStorage.setItem("game",JSON.stringify(g));
+function getExtraLoot(){
+    const rand = Math.random();
+    if(rand<0.01) return "Sunken Chest";
+    if(rand<0.03) return "Old Boot";
+    return null;
+}
 
-// ================= DEPTH =================
-const depth = Math.floor(Math.random()*100)+1;
-document.getElementById("depthText").textContent = depth+"m";
+// ----- INVENTORY -----
+function toggleInventory(){
+    const card = document.getElementById("inventoryCard");
+    card.style.display = card.style.display==="block"?"none":"block";
+    if(card.style.display==="block") renderInventory();
+}
 
-// ================= BAIT =================
-const baitType = g.baitType || "Basic";
-const baitBoost = {
-    Basic:1,
-    Advanced:1.2,
-    Shiny:1.6
-}[baitType] || 1;
+function renderInventory(){
+    const invList = document.getElementById("invList");
+    invList.innerHTML = "";
+    for(let f in g.inventory){
+        const div = document.createElement("div");
+        div.className="fish-card";
+        const span = document.createElement("span");
+        span.textContent = `${f} x${g.inventory[f]}`;
+        const sellBtn = document.createElement("button");
+        sellBtn.textContent="Sell";
+        sellBtn.onclick = (()=>{ const fishName=f; return ()=>{
+            if(g.inventory[fishName]>0){
+                const val = fishByLoc[g.location].find(x=>x.name===fishName)?.value || 10;
+                g.inventory[fishName]--;
+                g.money += val;
+                if(g.inventory[fishName]<=0) delete g.inventory[fishName];
+                localStorage.setItem("game", JSON.stringify(g));
+                renderInventory();
+            }
+        };})();
+        div.appendChild(span); div.appendChild(sellBtn);
+        invList.appendChild(div);
+    }
+}
 
-// ================= SKILLS (SAFE DEFAULTS) =================
-const skills = g.skills || {control:0,power:0,glide:0};
-
-// ================= FISH =================
-const fish = {
-    rarity:(1 + depth/90) * baitBoost,
-    xp:Math.floor(20 + depth*1.4)
-};
-
-document.getElementById("rarityText").textContent =
-fish.rarity < 1.2 ? "Common" :
-fish.rarity < 1.8 ? "Rare" : "Legendary";
-
-// ================= PHYSICS =================
-const BAR = 520;
-
-let fishX = 260;
-let fishV = (Math.random()*2+1) * (Math.random()<0.5?-1:1);
-
-let boxX = 200;
-let boxV = 0;
-
-const accel = 1.1 + skills.power*0.3;
-const friction = 0.9 - skills.glide*0.02;
-
-const boxW = 90 + skills.control*15;
-document.getElementById("box").style.width = boxW+"px";
-
-let input = 0;
-let catchProg = 0;
-let gameOver = false;
-
-const bar = document.getElementById("catchBar");
-
-// ================= INPUT =================
-document.onkeydown = e=>{
-    if(e.key==="ArrowLeft") input=-1;
-    if(e.key==="ArrowRight") input=1;
-};
-document.onkeyup = ()=>input=0;
-
-document.getElementById("left").onmousedown = ()=>input=-1;
-document.getElementById("right").onmousedown = ()=>input=1;
-document.getElementById("left").onmouseup =
-document.getElementById("right").onmouseup = ()=>input=0;
-
-// ================= MAIN LOOP =================
+// ----- MAIN LOOP -----
 const loop = setInterval(()=>{
-    if(gameOver) return;
-
-    // Fish motion
-    fishV += (Math.random()-0.5)*0.3*fish.rarity;
-    fishX += fishV;
-    if(fishX<0 || fishX>BAR-18) fishV*=-1;
+    // Fish moves
+    fishX += fishDir * (2 + fish.rarity);
+    if(Math.random()<0.02) fishDir*=-1;
+    if(fishX<0 || fishX>BAR-20) fishDir*=-1;
     document.getElementById("fish").style.left = fishX+"px";
 
-    // Box physics (velocity + inertia)
-    boxV += input * accel;
-    boxV *= friction;
-    boxX += boxV;
+    // Box moves with velocity + acceleration
+    boxVel += move*0.5; // acceleration
+    boxVel *= 0.85; // friction
+    boxX += boxVel;
     boxX = Math.max(0, Math.min(BAR-boxW, boxX));
     document.getElementById("box").style.left = boxX+"px";
 
-    // Catch logic
-    const center = fishX + 9;
-    const inside = center > boxX && center < boxX + boxW;
-
-    catchProg += inside
-        ? (1 + skills.power*0.6)
-        : -(0.8 + fish.rarity*0.4);
-
+    // Catch progress
+    const center = fishX + 10;
+    const inside = center > boxX && center < boxX+boxW;
+    if(inside) catchProg += 0.8;
+    else catchProg -= 0.6*fish.rarity;
     catchProg = Math.max(0, Math.min(100, catchProg));
-    bar.style.width = catchProg + "%";
+    catchBar.style.width = catchProg + "%";
 
-    // WIN
     if(catchProg >= 100){
-        gameOver = true;
         clearInterval(loop);
+        const mut = applyMutation(fish);
+        const fishName = mut.mut ? `${mut.mut} ${fish.name}` : fish.name;
+        const fishXP = Math.floor(fish.xp*mut.mult);
+        const fishVal = Math.floor((fish.value||fish.xp)*mut.mult);
 
-        g.xp += fish.xp;
-        g.inventory ??= {};
-        g.inventory["Fish"] = (g.inventory["Fish"] || 0) + 1;
+        g.inventory[fishName] = (g.inventory[fishName]||0)+1;
+        g.caught[fish.name] = true;
+        g.fishCount++;
+        g.xp += fishXP;
 
-        localStorage.setItem("game",JSON.stringify(g));
+        // Level up
+        while(g.xp >= g.xpNeed){
+            g.xp -= g.xpNeed;
+            g.level++;
+            g.xpNeed = Math.floor(g.xpNeed*1.5);
+        }
 
-        setTimeout(()=>{
-            alert(`🐟 Caught fish!\nDepth: ${depth}m\n+${fish.xp} XP`);
-            location.href="index.html";
-        },200);
+        // Extra loot
+        const loot = getExtraLoot();
+        if(loot){
+            g.inventory[loot] = (g.inventory[loot]||0)+1;
+            alert(`🎁 You found a ${loot}!`);
+        }
+
+        localStorage.setItem("game", JSON.stringify(g));
+        setTimeout(()=>alert(`🐟 You caught a ${fishName}! XP: ${fishXP}`),50);
+        setTimeout(()=>location.href="index.html",100);
     }
 },16);
-</script>
 
+</script>
 </body>
 </html>
