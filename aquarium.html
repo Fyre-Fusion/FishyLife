@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FishyLife – Aquarium</title>
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:linear-gradient(#1e90ff,#003f5c);
+    color:white;
+    text-align:center;
+}
+header{
+    display:flex;
+    justify-content:space-around;
+    padding:12px;
+    background:rgba(0,0,0,.4);
+}
+header a{color:white;text-decoration:none;font-size:18px;}
+
+h1{margin:16px;}
+
+#aquarium{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:14px;
+    padding:20px;
+    max-width:1000px;
+    margin:auto;
+}
+
+.fishCard{
+    background:rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:12px;
+    box-shadow:0 0 12px rgba(0,0,0,.4);
+    position:relative;
+}
+
+.fishName{font-weight:bold;font-size:18px;}
+.count{font-size:14px;opacity:.9;margin-top:4px;}
+
+.common{border:2px solid #aaa;}
+.uncommon{border:2px solid #4caf50;}
+.rare{border:2px solid #2196f3;}
+.legendary{
+    border:2px solid gold;
+    box-shadow:0 0 12px gold;
+}
+
+.locked{
+    opacity:.35;
+    filter:grayscale(100%);
+}
+
+.statBar{
+    width:100%;
+    height:6px;
+    background:#333;
+    border-radius:6px;
+    margin-top:6px;
+    overflow:hidden;
+}
+.statFill{
+    height:100%;
+    background:lime;
+}
+</style>
+</head>
+<body>
+
+<header>
+<a href="index.html">🏠 Home</a>
+<a href="fish.html">🎣 Fish</a>
+<a href="shop.html">🛒 Shop</a>
+</header>
+
+<h1>🐠 Aquarium</h1>
+<div id="summary"></div>
+
+<div id="aquarium"></div>
+
+<script>
+// ============== LOAD GAME ==============
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){ alert("No save found"); location.href="index.html"; }
+
+g.inventory ??= {};
+g.caught ??= {};
+
+// ============== MASTER FISH LIST ==============
+const fishData = [
+    {name:"Minnow",rarity:"Common"},
+    {name:"Bluegill",rarity:"Common"},
+    {name:"Bass",rarity:"Uncommon"},
+    {name:"Trout",rarity:"Uncommon"},
+    {name:"Catfish",rarity:"Uncommon"},
+    {name:"Salmon",rarity:"Rare"},
+    {name:"Peacock Bass",rarity:"Rare"},
+    {name:"Red Snapper",rarity:"Rare"},
+    {name:"Tilapia",rarity:"Uncommon"},
+    {name:"Clownfish",rarity:"Uncommon"},
+    {name:"Moonfish",rarity:"Rare"},
+    {name:"Tigershark",rarity:"Legendary"},
+    {name:"Goldfish",rarity:"Common"},
+    {name:"Angelfish",rarity:"Uncommon"},
+    {name:"Turtle",rarity:"Rare"},
+    {name:"Kepper",rarity:"Rare"},
+    {name:"Lemonshark",rarity:"Legendary"},
+    {name:"Lungfish",rarity:"Rare"},
+    {name:"Squid",rarity:"Uncommon"},
+    {name:"Crabs",rarity:"Common"},
+    {name:"Crawfish",rarity:"Common"},
+    {name:"Mussels",rarity:"Uncommon"},
+    {name:"Clams",rarity:"Uncommon"},
+    {name:"Abyssal Octopus",rarity:"Legendary"}
+];
+
+// ============== SUMMARY ==============
+const caughtCount = Object.keys(g.caught).length;
+document.getElementById("summary").textContent =
+`Species Collected: ${caughtCount} / ${fishData.length}`;
+
+// ============== RENDER AQUARIUM ==============
+const aq = document.getElementById("aquarium");
+
+fishData.forEach(f=>{
+    const card = document.createElement("div");
+    const isCaught = g.caught[f.name];
+    const count = g.inventory[f.name] || 0;
+
+    card.className = "fishCard " +
+        (isCaught ? f.rarity.toLowerCase() : "locked");
+
+    const name = document.createElement("div");
+    name.className = "fishName";
+    name.textContent = isCaught ? f.name : "???";
+
+    const rarity = document.createElement("div");
+    rarity.textContent = isCaught ? f.rarity : "Unknown";
+
+    const qty = document.createElement("div");
+    qty.className = "count";
+    qty.textContent = isCaught ? `Owned: ${count}` : "";
+
+    // Visual fullness bar
+    const bar = document.createElement("div");
+    bar.className = "statBar";
+    const fill = document.createElement("div");
+    fill.className = "statFill";
+    fill.style.width = Math.min(100, count*10)+"%";
+    bar.appendChild(fill);
+
+    card.appendChild(name);
+    card.appendChild(rarity);
+    card.appendChild(qty);
+    if(isCaught) card.appendChild(bar);
+
+    aq.appendChild(card);
+});
+</script>
+
+</body>
+</html>
+
