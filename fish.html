@@ -115,33 +115,170 @@ const loop = setInterval(()=>{
     else catchProg -= 0.6 * fish.rarity;
 
     catchProg = Math.max(0, Math.min(100, catchProg));
-    catchBar.style.width = catchProg + "%";
+    catchBar.style.<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>FishyLife – Fishing</title>
+<style>
+body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
+header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
+header a{color:white;text-decoration:none;}
+#track{width:520px;height:40px;background:#1f618d;border-radius:25px;margin:20px auto;position:relative;overflow:hidden;}
+#fish{width:18px;height:18px;background:white;border-radius:50%;position:absolute;top:11px;}
+#box{height:40px;border:3px solid red;position:absolute;top:0;}
+.barWrap{width:520px;height:14px;background:#222;margin:6px auto;border-radius:8px;}
+.bar{height:100%;width:0%;border-radius:8px;}
+#catchBar{background:lime;}
+button{padding:12px 18px;font-size:18px;margin:6px;}
+.skill{background:rgba(0,0,0,.3);margin:6px;padding:8px;border-radius:8px;}
+</style>
+</head>
+<body>
 
-    if(catchProg >= 100){
+<header>
+<a href="index.html">🏠 Home</a>
+<a href="shop.html">🛒 Shop</a>
+</header>
+
+<h1>🎣 Fishing</h1>
+
+<div>🌊 Depth: <span id="depthText"></span></div>
+
+<div id="track">
+    <div id="fish"></div>
+    <div id="box"></div>
+</div>
+
+<div class="barWrap"><div id="catchBar" class="bar"></div></div>
+<div id="rarityText"></div>
+
+<button id="left">⬅️</button>
+<button id="right">➡️</button>
+
+<h2>🌟 Skill Tree</h2>
+<div id="skills"></div>
+
+<script>
+// ================= LOAD GAME =================
+let g = JSON.parse(localStorage.getItem("game"));
+if(!g){ alert("No save!"); location.href="index.html"; }
+
+g.skills ??= {control:0,power:0,glide:0};
+g.skillPoints ??= 0;
+
+// ================= BAIT SYSTEM =================
+const baitType = g.baitType || "Basic";
+const baitBoost = {
+    Basic:{rarity:1},
+    Advanced:{rarity:1.2},
+    Shiny:{rarity:1.6}
+}[baitType] || {rarity:1};
+
+// ================= DEPTH SYSTEM =================
+const depth = Math.floor(Math.random()*100)+1;
+document.getElementById("depthText").textContent = depth+"m";
+
+// ================= FISH =================
+const fish = {
+    name:"Mystery Fish",
+    rarity:(1 + depth/80) * baitBoost.rarity,
+    xp:Math.floor(20 + depth*1.5)
+};
+document.getElementById("rarityText").textContent =
+fish.rarity<1.2?"Common":fish.rarity<1.8?"Rare":"Legendary";
+
+// ================= PHYSICS =================
+const BAR=520;
+let fishX=260, fishV=(Math.random()*2+1)*(Math.random()<.5?-1:1);
+
+let boxX=200, boxV=0;
+const gravity = 0.4;
+const friction = 0.92;
+
+// box size scales with skill
+const boxW = 90 + g.skills.control*15;
+document.getElementById("box").style.width = boxW+"px";
+
+let input=0;
+
+// ================= INPUT =================
+document.onkeydown=e=>{
+    if(e.key==="ArrowLeft") input=-1;
+    if(e.key==="ArrowRight") input=1;
+};
+document.onkeyup=()=>input=0;
+
+document.getElementById("left").onmousedown=()=>input=-1;
+document.getElementById("right").onmousedown=()=>input=1;
+document.getElementById("left").onmouseup=
+document.getElementById("right").onmouseup=()=>input=0;
+
+// ================= CATCH =================
+let catchProg=0;
+const bar=document.getElementById("catchBar");
+
+// ================= MAIN LOOP =================
+const loop=setInterval(()=>{
+    // Fish motion
+    fishV += (Math.random()-0.5)*0.4*fish.rarity;
+    fishX += fishV;
+    if(fishX<0||fishX>BAR-18) fishV*=-1;
+    document.getElementById("fish").style.left=fishX+"px";
+
+    // Box physics (velocity + inertia)
+    boxV += input * (1.2 + g.skills.power*0.4);
+    boxV *= friction;
+    boxX += boxV;
+    boxX=Math.max(0,Math.min(BAR-boxW,boxX));
+    document.getElementById("box").style.left=boxX+"px";
+
+    // Catch logic
+    const center=fishX+9;
+    const inside=center>boxX && center<boxX+boxW;
+    catchProg += inside ? (1+g.skills.power*0.6) : -(0.8+fish.rarity*0.4);
+    catchProg=Math.max(0,Math.min(100,catchProg));
+    bar.style.width=catchProg+"%";
+
+    if(catchProg>=100){
         clearInterval(loop);
-        const mut = applyMutation(fish);
-        const fishName = mut.mut ? `${mut.mut} ${fish.name}` : fish.name;
-        const fishXP = Math.floor(fish.xp*mut.mult);
-        const fishVal = Math.floor((fish.value||fish.xp)*mut.mult);
-
-        g.inventory[fishName] = (g.inventory[fishName]||0)+1;
-        g.caught[fish.name] = true;
-        g.fishCount++;
-        g.xp += fishXP;
-
-        // Level up
-        while(g.xp >= g.xpNeed){
-            g.xp -= g.xpNeed;
-            g.level++;
-            g.xpNeed = Math.floor(g.xpNeed*1.5);
-        }
-
-        localStorage.setItem("game", JSON.stringify(g));
-        setTimeout(()=>alert(`🐟 You caught a ${fishName}! XP: ${fishXP}`),50);
-        setTimeout(()=>location.href="index.html",100);
+        g.xp+=fish.xp;
+        g.inventory[fish.name]=(g.inventory[fish.name]||0)+1;
+        g.skillPoints++;
+        localStorage.setItem("game",JSON.stringify(g));
+        alert(`🐟 Caught fish at ${depth}m!\n+${fish.xp} XP\n+1 Skill Point`);
+        location.href="index.html";
     }
 },16);
-</script>
 
+// ================= SKILL TREE =================
+const skillDiv=document.getElementById("skills");
+const skillData=[
+    {key:"control",name:"Control",desc:"Bigger catch box"},
+    {key:"power",name:"Power",desc:"Faster catch"},
+    {key:"glide",name:"Glide",desc:"Less friction"}
+];
+
+function renderSkills(){
+    skillDiv.innerHTML="";
+    skillData.forEach(s=>{
+        const d=document.createElement("div");
+        d.className="skill";
+        d.innerHTML=`${s.name} (${g.skills[s.key]})<br>${s.desc}<br>`;
+        const b=document.createElement("button");
+        b.textContent="Upgrade";
+        b.onclick=()=>{
+            if(g.skillPoints<=0){alert("No skill points");return;}
+            g.skills[s.key]++;
+            g.skillPoints--;
+            localStorage.setItem("game",JSON.stringify(g));
+            location.reload();
+        };
+        d.appendChild(b);
+        skillDiv.appendChild(d);
+    });
+}
+renderSkills();
+</script>
 </body>
 </html>
