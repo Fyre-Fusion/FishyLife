@@ -4,14 +4,55 @@
 <meta charset="UTF-8">
 <title>FishyLife</title>
 <style>
-body { margin:0; font-family:Arial, sans-serif; background:#4db8ff; color:white; text-align:center; }
-header { display:flex; justify-content:space-around; padding:12px; background:rgba(0,0,0,.35); }
-header a { color:white; text-decoration:none; font-size:18px; }
-h1 { margin-top:20px; }
-.card { background:rgba(0,0,0,.35); width:360px; margin:20px auto; padding:20px; border-radius:14px; }
-button { padding:8px 14px; border:none; border-radius:8px; font-weight:bold; margin:6px; cursor:pointer; }
-select { padding:6px; border-radius:6px; }
-#quests,#inventory,#encyclopedia,#settings { display:none; }
+body {
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:#4db8ff;
+    color:white;
+    text-align:center;
+}
+header {
+    display:flex;
+    justify-content:space-around;
+    padding:12px;
+    background:rgba(0,0,0,.35);
+    flex-wrap: wrap;
+}
+header a, header button {
+    color:white;
+    text-decoration:none;
+    font-size:18px;
+    background:none;
+    border:none;
+    cursor:pointer;
+}
+h1 {
+    margin-top:20px;
+}
+.card {
+    background:rgba(0,0,0,.35);
+    width:360px;
+    max-width:90%;
+    margin:20px auto;
+    padding:20px;
+    border-radius:14px;
+    text-align:left;
+}
+button {
+    padding:8px 14px;
+    border:none;
+    border-radius:8px;
+    font-weight:bold;
+    margin:6px 2px;
+    cursor:pointer;
+}
+select {
+    padding:6px;
+    border-radius:6px;
+}
+#quests, #inventory, #encyclopedia, #settingsCard {
+    display:none;
+}
 </style>
 </head>
 <body>
@@ -19,20 +60,21 @@ select { padding:6px; border-radius:6px; }
 <header>
 <a href="fish.html">🎣 Fish</a>
 <a href="shop.html">🛒 Shop</a>
-<a href="#" onclick="toggleCard('inventory')">🎒 Bag</a>
-<a href="#" onclick="toggleCard('encyclopedia')">📖 Encyclopedia</a>
-<a href="#" onclick="toggleCard('quests')">🎯 Quests</a>
-<a href="#" onclick="toggleCard('settings')">⚙️ Settings</a>
+<button onclick="toggleCard('inventory')">🎒 Bag</button>
+<button onclick="toggleCard('encyclopedia')">📖 Encyclopedia</button>
+<button onclick="toggleCard('settingsCard')">⚙️ Settings</button>
+<button onclick="toggleCard('quests')">🎯 Quests</button>
 <a href="aquarium.html">🐠 Aquarium</a>
 </header>
 
 <h1>🐟 FishyLife</h1>
 
 <div class="card">
-<p>⭐ Level: <span id="level"></span></p>
-<p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
-<p>💰 Money: $<span id="money"></span></p>
-<p>🪱 Bait: <span id="bait"></span></p>
+    <p>⭐ Level: <span id="level"></span></p>
+    <p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
+    <p>💰 Money: $<span id="money"></span></p>
+    <p>🪱 Bait: <span id="bait"></span></p>
+    <p>🛥 Boat: <span id="boat"></span></p>
 </div>
 
 <!-- QUESTS -->
@@ -54,9 +96,9 @@ select { padding:6px; border-radius:6px; }
 </div>
 
 <!-- SETTINGS -->
-<div class="card" id="settings">
+<div class="card" id="settingsCard">
 <h2>⚙️ Settings</h2>
-<button onclick="resetGame()">Reset Game</button>
+<button onclick="resetGame()">🔄 Reset Game</button>
 </div>
 
 <script>
@@ -65,8 +107,7 @@ let g = JSON.parse(localStorage.getItem("game"));
 if(!g){
     g = {
         level:1, xp:0, xpNeed:50, money:15, bait:5,
-        rod:"Basic Rod", location:"River",
-        unlocked:{River:true,Ocean:false},
+        rod:"Basic Rod", boat:null,
         inventory:{}, caught:{}, fishCount:0,
         activeQuest:null, questProgress:{}
     };
@@ -79,6 +120,7 @@ function updateStats(){
     document.getElementById("xpNeed").textContent = g.xpNeed;
     document.getElementById("money").textContent = g.money;
     document.getElementById("bait").textContent = g.bait;
+    document.getElementById("boat").textContent = g.boat || "None";
 }
 
 updateStats();
@@ -86,13 +128,10 @@ updateStats();
 // ---------------- TOGGLE CARDS ----------------
 function toggleCard(id){
     const el = document.getElementById(id);
-    if(el.style.display==="block") el.style.display="none";
-    else{
-        el.style.display="block";
-        if(id==="inventory") renderInventory();
-        if(id==="encyclopedia") renderFish();
-        if(id==="quests") renderQuest();
-    }
+    el.style.display = el.style.display==="block"?"none":"block";
+    if(id==="inventory") renderInventory();
+    if(id==="encyclopedia") renderFish();
+    if(id==="quests") renderQuest();
 }
 
 // ---------------- INVENTORY ----------------
@@ -131,30 +170,26 @@ const fishData = [
 {name:"Squid",category:"Uncommon"},
 {name:"Crabs",category:"Common"},
 {name:"Crawfish Red",category:"Common"},
-{name:"Crawfish Blue",category:"Uncommon"},
-{name:"Salmon",category:"Rare"},
-{name:"Pufferfish",category:"Rare"},
-{name:"Vampire Fish",category:"Epic"},
-{name:"Japanese Spider Crab",category:"Rare"},
-{name:"Carp",category:"Uncommon"},
-{name:"Oscar",category:"Uncommon"},
-{name:"Freshwater Shark",category:"Rare"},
-{name:"Lionfish",category:"Rare"},
-{name:"Prawn",category:"Uncommon"},
+{name:"Crawfish Blue",category:"Rare"},
+{name:"Prawn",category:"Common"},
 {name:"Shrimp",category:"Common"},
-{name:"Octopus",category:"Rare"},
+{name:"Octopus",category:"Uncommon"},
 {name:"Sea Urchin",category:"Uncommon"},
 {name:"Salami",category:"Uncommon"},
 {name:"Sting Ray",category:"Rare"},
-{name:"Dolphin",category:"Epic"},
+{name:"Dolphin",category:"Legendary"},
 {name:"Blind Dolphin",category:"Legendary"},
 {name:"Stonefish",category:"Rare"},
 {name:"Pike",category:"Uncommon"},
 {name:"Sea Snake",category:"Rare"},
-{name:"Eel",category:"Uncommon"},
+{name:"Eel",category:"Rare"},
 {name:"Electric Eel",category:"Epic"},
-{name:"Tigerfish",category:"Rare"},
-{name:"Catfish Red Tail",category:"Epic"}
+{name:"Tigerfish",category:"Epic"},
+{name:"Red Tail Catfish",category:"Epic"},
+{name:"Great White Shark",category:"Legendary"},
+{name:"Hammerhead Shark",category:"Legendary"},
+{name:"Spine Fish",category:"Rare"},
+{name:"Sea Turtle",category:"Rare"}
 ];
 
 function renderFish(){
@@ -181,9 +216,9 @@ function renderQuest(){
     info.textContent = `Catch ${target} ${fishName}: ${progress}/${target}`;
 }
 
-// ---------------- SETTINGS ----------------
+// ---------------- RESET ----------------
 function resetGame(){
-    if(confirm("Are you sure you want to reset the game? All progress will be lost.")){
+    if(confirm("Are you sure you want to reset the game?")){
         localStorage.removeItem("game");
         location.reload();
     }
