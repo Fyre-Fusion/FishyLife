@@ -11,6 +11,7 @@ h1 { margin-top:20px; }
 .card { background:rgba(0,0,0,.35); width:360px; margin:20px auto; padding:20px; border-radius:14px; }
 button { padding:8px 14px; border:none; border-radius:8px; font-weight:bold; margin:6px; cursor:pointer; }
 select { padding:6px; border-radius:6px; }
+#quests,#inventory,#encyclopedia,#settings { display:none; }
 </style>
 </head>
 <body>
@@ -18,8 +19,11 @@ select { padding:6px; border-radius:6px; }
 <header>
 <a href="fish.html">🎣 Fish</a>
 <a href="shop.html">🛒 Shop</a>
+<a href="#" onclick="toggleCard('inventory')">🎒 Bag</a>
+<a href="#" onclick="toggleCard('encyclopedia')">📖 Encyclopedia</a>
+<a href="#" onclick="toggleCard('quests')">🎯 Quests</a>
+<a href="#" onclick="toggleCard('settings')">⚙️ Settings</a>
 <a href="aquarium.html">🐠 Aquarium</a>
-<a href="quests.html">🎯 Quests</a>
 </header>
 
 <h1>🐟 FishyLife</h1>
@@ -29,12 +33,30 @@ select { padding:6px; border-radius:6px; }
 <p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
 <p>💰 Money: $<span id="money"></span></p>
 <p>🪱 Bait: <span id="bait"></span></p>
-<p>🌍 Location: 
-    <select id="location" onchange="changeLocation()">
-        <option value="River">River</option>
-        <option value="Ocean">Ocean</option>
-    </select>
-</p>
+</div>
+
+<!-- QUESTS -->
+<div class="card" id="quests">
+<h2>🎯 Active Quest</h2>
+<div id="questInfo"></div>
+</div>
+
+<!-- INVENTORY -->
+<div class="card" id="inventory">
+<h2>🎒 Inventory</h2>
+<div id="invList"></div>
+</div>
+
+<!-- ENCYCLOPEDIA -->
+<div class="card" id="encyclopedia">
+<h2>📖 Encyclopedia</h2>
+<div id="fishList"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="card" id="settings">
+<h2>⚙️ Settings</h2>
+<button onclick="resetGame()">Reset Game</button>
 </div>
 
 <script>
@@ -46,8 +68,7 @@ if(!g){
         rod:"Basic Rod", location:"River",
         unlocked:{River:true,Ocean:false},
         inventory:{}, caught:{}, fishCount:0,
-        activeQuest:null, questProgress:{},
-        boat:null
+        activeQuest:null, questProgress:{}
     };
     localStorage.setItem("game",JSON.stringify(g));
 }
@@ -58,21 +79,114 @@ function updateStats(){
     document.getElementById("xpNeed").textContent = g.xpNeed;
     document.getElementById("money").textContent = g.money;
     document.getElementById("bait").textContent = g.bait;
-    document.getElementById("location").value = g.location;
 }
+
 updateStats();
 
-// ---------------- LOCATION ----------------
-function changeLocation(){
-    const loc = document.getElementById("location").value;
-    if(!g.unlocked[loc]){
-        alert("Location locked! Unlock in shop.");
-        document.getElementById("location").value = g.location;
-        return;
+// ---------------- TOGGLE CARDS ----------------
+function toggleCard(id){
+    const el = document.getElementById(id);
+    if(el.style.display==="block") el.style.display="none";
+    else{
+        el.style.display="block";
+        if(id==="inventory") renderInventory();
+        if(id==="encyclopedia") renderFish();
+        if(id==="quests") renderQuest();
     }
-    g.location = loc;
-    localStorage.setItem("game",JSON.stringify(g));
-    updateStats();
+}
+
+// ---------------- INVENTORY ----------------
+function renderInventory(){
+    const invList = document.getElementById("invList");
+    invList.innerHTML = "";
+    for(let f in g.inventory){
+        const div = document.createElement("div");
+        div.className = "fish-card";
+        div.textContent = `${f} x${g.inventory[f]}`;
+        invList.appendChild(div);
+    }
+}
+
+// ---------------- ENCYCLOPEDIA ----------------
+const fishData = [
+{name:"Minnow",category:"Common"},
+{name:"Bluegill",category:"Common"},
+{name:"Bass",category:"Uncommon"},
+{name:"Trout",category:"Uncommon"},
+{name:"Catfish",category:"Uncommon"},
+{name:"Salmon",category:"Rare"},
+{name:"Peacock Bass",category:"Rare"},
+{name:"Red Snapper",category:"Rare"},
+{name:"Tilapia",category:"Uncommon"},
+{name:"Clownfish",category:"Uncommon"},
+{name:"Moonfish",category:"Rare"},
+{name:"Tigershark",category:"Legendary"},
+{name:"Basa",category:"Uncommon"},
+{name:"Goldfish",category:"Common"},
+{name:"Angelfish",category:"Uncommon"},
+{name:"Turtle",category:"Rare"},
+{name:"Kepper",category:"Rare"},
+{name:"Lemonshark",category:"Legendary"},
+{name:"Lungfish",category:"Rare"},
+{name:"Squid",category:"Uncommon"},
+{name:"Crabs",category:"Common"},
+{name:"Crawfish Red",category:"Common"},
+{name:"Crawfish Blue",category:"Uncommon"},
+{name:"Salmon",category:"Rare"},
+{name:"Pufferfish",category:"Rare"},
+{name:"Vampire Fish",category:"Epic"},
+{name:"Japanese Spider Crab",category:"Rare"},
+{name:"Carp",category:"Uncommon"},
+{name:"Oscar",category:"Uncommon"},
+{name:"Freshwater Shark",category:"Rare"},
+{name:"Lionfish",category:"Rare"},
+{name:"Prawn",category:"Uncommon"},
+{name:"Shrimp",category:"Common"},
+{name:"Octopus",category:"Rare"},
+{name:"Sea Urchin",category:"Uncommon"},
+{name:"Salami",category:"Uncommon"},
+{name:"Sting Ray",category:"Rare"},
+{name:"Dolphin",category:"Epic"},
+{name:"Blind Dolphin",category:"Legendary"},
+{name:"Stonefish",category:"Rare"},
+{name:"Pike",category:"Uncommon"},
+{name:"Sea Snake",category:"Rare"},
+{name:"Eel",category:"Uncommon"},
+{name:"Electric Eel",category:"Epic"},
+{name:"Tigerfish",category:"Rare"},
+{name:"Catfish Red Tail",category:"Epic"}
+];
+
+function renderFish(){
+    const fishList = document.getElementById("fishList");
+    fishList.innerHTML = "";
+    fishData.forEach(f=>{
+        const caught = g.caught[f.name] || false;
+        const d = document.createElement("div");
+        d.className = "fish-card";
+        d.textContent = (caught?"✅ ":"❌ ") + f.name + " [" + f.category + "]";
+        fishList.appendChild(d);
+    });
+}
+
+// ---------------- QUESTS ----------------
+function renderQuest(){
+    const card = document.getElementById("quests");
+    const info = document.getElementById("questInfo");
+    if(!g.activeQuest){ card.style.display="none"; return; }
+    card.style.display="block";
+    const fishName = g.activeQuest.fish;
+    const target = g.activeQuest.target;
+    const progress = g.questProgress[fishName]||0;
+    info.textContent = `Catch ${target} ${fishName}: ${progress}/${target}`;
+}
+
+// ---------------- SETTINGS ----------------
+function resetGame(){
+    if(confirm("Are you sure you want to reset the game? All progress will be lost.")){
+        localStorage.removeItem("game");
+        location.reload();
+    }
 }
 </script>
 
