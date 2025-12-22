@@ -4,44 +4,13 @@
 <meta charset="UTF-8">
 <title>FishyLife</title>
 <style>
-body {
-    margin:0;
-    font-family:Arial, sans-serif;
-    background:#4db8ff;
-    color:white;
-    text-align:center;
-}
-header {
-    display:flex;
-    justify-content:space-around;
-    padding:12px;
-    background:rgba(0,0,0,.35);
-}
-header a {
-    color:white;
-    text-decoration:none;
-    font-size:18px;
-}
+body { margin:0; font-family:Arial, sans-serif; background:#4db8ff; color:white; text-align:center; }
+header { display:flex; justify-content:space-around; padding:12px; background:rgba(0,0,0,.35); }
+header a { color:white; text-decoration:none; font-size:18px; }
 h1 { margin-top:20px; }
-.card {
-    background:rgba(0,0,0,.35);
-    width:360px;
-    margin:20px auto;
-    padding:20px;
-    border-radius:14px;
-}
-button {
-    padding:8px 14px;
-    border:none;
-    border-radius:8px;
-    font-weight:bold;
-    margin:6px;
-    cursor:pointer;
-}
-select {
-    padding:6px;
-    border-radius:6px;
-}
+.card { background:rgba(0,0,0,.35); width:360px; margin:20px auto; padding:20px; border-radius:14px; }
+button { padding:8px 14px; border:none; border-radius:8px; font-weight:bold; margin:6px; cursor:pointer; }
+select { padding:6px; border-radius:6px; }
 </style>
 </head>
 <body>
@@ -56,42 +25,33 @@ select {
 <h1>🐟 FishyLife</h1>
 
 <div class="card">
-    <p>⭐ Level: <span id="level"></span></p>
-    <p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
-    <p>💰 Money: $<span id="money"></span></p>
-    <p>🪱 Bait: <span id="bait"></span></p>
-    <p>🌍 Location: 
-        <select id="location" onchange="changeLocation()">
-            <option value="River">River</option>
-            <option value="Ocean">Ocean</option>
-        </select>
-    </p>
-    <p>⛵ Boat: <span id="boat"></span> ($<span id="boatPrice"></span>)</p>
-    <button onclick="buyBoat()">Buy / Upgrade Boat</button>
+<p>⭐ Level: <span id="level"></span></p>
+<p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
+<p>💰 Money: $<span id="money"></span></p>
+<p>🪱 Bait: <span id="bait"></span></p>
+<p>🌍 Location: 
+    <select id="location" onchange="changeLocation()">
+        <option value="River">River</option>
+        <option value="Ocean">Ocean</option>
+    </select>
+</p>
 </div>
 
 <script>
-// ---------- LOAD GAME ----------
+// ---------------- LOAD GAME ----------------
 let g = JSON.parse(localStorage.getItem("game"));
 if(!g){
     g = {
-        level:1, xp:0, xpNeed:50, money:5000, bait:5,
+        level:1, xp:0, xpNeed:50, money:15, bait:5,
         rod:"Basic Rod", location:"River",
+        unlocked:{River:true,Ocean:false},
         inventory:{}, caught:{}, fishCount:0,
-        boat:"Sea Whisper", boatsUnlocked:{Sea_Whisper:true,Blue_Horizon:false,Storm_Voyager:false,USS_Victoris:false}
+        activeQuest:null, questProgress:{},
+        boat:null
     };
     localStorage.setItem("game",JSON.stringify(g));
 }
 
-// Boat list
-const boats = [
-    {name:"Sea Whisper",price:5000},
-    {name:"Blue Horizon",price:6000},
-    {name:"Storm Voyager",price:7000},
-    {name:"USS Victoris",price:8000}
-];
-
-// ---------- UPDATE STATS ----------
 function updateStats(){
     document.getElementById("level").textContent = g.level;
     document.getElementById("xp").textContent = g.xp;
@@ -99,32 +59,19 @@ function updateStats(){
     document.getElementById("money").textContent = g.money;
     document.getElementById("bait").textContent = g.bait;
     document.getElementById("location").value = g.location;
-    document.getElementById("boat").textContent = g.boat;
-    const idx = boats.findIndex(b=>b.name===g.boat);
-    if(idx<boats.length-1){
-        document.getElementById("boatPrice").textContent = boats[idx+1].price;
-    } else document.getElementById("boatPrice").textContent = "MAX";
 }
 updateStats();
 
-// ---------- LOCATION ----------
+// ---------------- LOCATION ----------------
 function changeLocation(){
-    g.location = document.getElementById("location").value;
+    const loc = document.getElementById("location").value;
+    if(!g.unlocked[loc]){
+        alert("Location locked! Unlock in shop.");
+        document.getElementById("location").value = g.location;
+        return;
+    }
+    g.location = loc;
     localStorage.setItem("game",JSON.stringify(g));
-    updateStats();
-}
-
-// ---------- BUY / UPGRADE BOAT ----------
-function buyBoat(){
-    const idx = boats.findIndex(b=>b.name===g.boat);
-    if(idx>=boats.length-1){ alert("Boat already maxed!"); return; }
-    const nextBoat = boats[idx+1];
-    if(g.money<nextBoat.price){ alert("Not enough money!"); return; }
-    g.money -= nextBoat.price;
-    g.boat = nextBoat.name;
-    g.boatsUnlocked[nextBoat.name.replace(" ","_")] = true;
-    localStorage.setItem("game",JSON.stringify(g));
-    alert(`Bought / Upgraded to ${nextBoat.name}!`);
     updateStats();
 }
 </script>
