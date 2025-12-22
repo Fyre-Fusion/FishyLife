@@ -10,7 +10,7 @@ header a { color:white; text-decoration:none; }
 .card { background:rgba(0,0,0,.35); width:360px; margin:20px auto; padding:20px; border-radius:14px; text-align:left; }
 button { padding:8px 14px; border:none; border-radius:8px; font-weight:bold; margin-top:6px; cursor:pointer; }
 h1 { text-align:center; }
-.quest-complete { color:lime; font-weight:bold; }
+.quest-complete { color:lime; font-weight:bold; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -20,7 +20,6 @@ h1 { text-align:center; }
 <a href="fish.html">🎣 Fish</a>
 <a href="shop.html">🛒 Shop</a>
 <a href="aquarium.html">🐠 Aquarium</a>
-<a href="skills.html">🌳 Skills</a>
 </header>
 
 <h1>🎯 Quests</h1>
@@ -28,22 +27,23 @@ h1 { text-align:center; }
 <div id="questsContainer"></div>
 
 <script>
-// ----- LOAD GAME -----
+// ---------- LOAD GAME ----------
 let g = JSON.parse(localStorage.getItem("game"));
 if(!g){ alert("No save found! Returning home."); location.href="index.html"; }
 
-// ----- SAMPLE QUEST DATA -----
+// ---------- SAMPLE QUESTS ----------
 const quests = [
     {id:"catchMinnow", title:"Catch 5 Minnows", fish:"Minnow", target:5, reward:{money:50,xp:20}},
     {id:"catchBass", title:"Catch 3 Bass", fish:"Bass", target:3, reward:{money:100,xp:50}},
-    {id:"catchSalmon", title:"Catch 2 Salmon", fish:"Salmon", target:2, reward:{money:200,xp:100}}
+    {id:"catchSalmon", title:"Catch 2 Salmon", fish:"Salmon", target:2, reward:{money:200,xp:100}},
+    {id:"catchGreatWhite", title:"Catch 1 Great White Shark", fish:"Great White Shark", target:1, reward:{money:5000,xp:500}}
 ];
 
 // Initialize quest progress if not existing
 g.questProgress = g.questProgress || {};
 quests.forEach(q => { g.questProgress[q.id] = g.questProgress[q.id] || 0; });
 
-// ----- RENDER QUESTS -----
+// ---------- RENDER QUESTS ----------
 function renderQuests(){
     const container = document.getElementById("questsContainer");
     container.innerHTML = "";
@@ -63,7 +63,7 @@ function renderQuests(){
     });
 }
 
-// ----- CLAIM QUEST -----
+// ---------- CLAIM QUEST ----------
 function claimQuest(id){
     const q = quests.find(x => x.id===id);
     if(!q) return;
@@ -94,4 +94,3 @@ renderQuests();
 
 </body>
 </html>
-
