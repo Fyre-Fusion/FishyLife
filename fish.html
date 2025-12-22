@@ -5,12 +5,18 @@
 <title>FishyLife - Fish</title>
 <style>
 body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
-header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
-header a{color:white;text-decoration:none;}
-#fishingArea{position:relative;width:360px;height:200px;margin:20px auto;background:#1e7ccc;border:4px solid green;}
-#catchBar{position:absolute;width:50px;height:100%;background:red;left:0;top:0;}
-#controls{margin-top:10px;}
-button{padding:8px 12px;border:none;border-radius:6px;font-weight:bold;margin:4px;cursor:pointer;}
+header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);flex-wrap: wrap;}
+header a{color:white;text-decoration:none;font-size:18px;}
+h1{text-align:center;}
+.card{background:rgba(0,0,0,.35);width:360px;max-width:90%;margin:20px auto;padding:20px;border-radius:14px;}
+button{padding:6px 12px;border:none;border-radius:8px;font-weight:bold;margin:6px;cursor:pointer;}
+#fishingArea{position:relative;height:50px;background:#222;margin:20px auto;width:80%;border:2px solid white;border-radius:8px;}
+#greenBox{position:absolute;height:50px;width:60px;border:2px solid lime;left:150px;transition:left 0.05s;}
+#redLine{position:absolute;height:50px;width:4px;background:red;left:0;}
+#progressContainer{background:#555;width:80%;margin:10px auto;border-radius:6px;height:20px;}
+#progressBar{height:100%;width:0;background:lime;border-radius:6px;}
+#rarity{margin-top:10px;font-weight:bold;}
+.controls button{font-size:20px;padding:6px 12px;}
 </style>
 </head>
 <body>
@@ -20,37 +26,122 @@ button{padding:8px 12px;border:none;border-radius:6px;font-weight:bold;margin:4p
 <a href="shop.html">🛒 Shop</a>
 </header>
 
-<h1>🎣 Fishing</h1>
+<h1>🎣 FishyLife Fishing</h1>
 
+<div class="card">
+<h2>🎣 Fishing</h2>
+<p>Use ⬅️ and ➡️ buttons or left/right keys to control the green box!</p>
 <div id="fishingArea">
-  <div id="catchBar"></div>
+<div id="greenBox"></div>
+<div id="redLine"></div>
 </div>
-
-<div id="controls">
-  <button onclick="moveLeft()">&#8592;</button>
-  <button onclick="moveRight()">&#8594;</button>
+<div class="controls">
+<button onclick="moveLeft()">⬅️</button>
+<button onclick="moveRight()">➡️</button>
+</div>
+<div id="progressContainer"><div id="progressBar"></div></div>
+<div id="rarity">Rarity: Common</div>
 </div>
 
 <script>
+// ---------------- GAME LOAD ----------------
 let g = JSON.parse(localStorage.getItem("game"));
-if(!g) location.href="index.html";
+if(!g){ alert("No save found!"); location.href="index.html"; }
 
-const bar = document.getElementById("catchBar");
-let pos = 0, direction = 1, speed = 2;
-let fishing = true;
+const fishingArea = document.getElementById("fishingArea");
+const greenBox = document.getElementById("greenBox");
+const redLine = document.getElementById("redLine");
+const progressBar = document.getElementById("progressBar");
+const rarityText = document.getElementById("rarity");
 
-function animate(){
-    if(!fishing) return;
-    pos += direction * speed;
-    if(pos <=0) { pos=0; direction=1; }
-    if(pos >= 310) { pos=310; direction=-1; } // 360px - 50px bar width
-    bar.style.left = pos + "px";
-    requestAnimationFrame(animate);
+let greenPos = 150;
+let greenSpeed = 10;
+
+let progress = 0;
+let currentFish = {name:"Minnow",category:"Common"};
+
+// ---------------- FISH DATA ----------------
+const fishPool = g.inventory || {};
+const fishList = [
+{name:"Minnow",category:"Common"},
+{name:"Bluegill",category:"Common"},
+{name:"Bass",category:"Uncommon"},
+{name:"Trout",category:"Uncommon"},
+{name:"Catfish",category:"Uncommon"},
+{name:"Salmon",category:"Rare"},
+{name:"Peacock Bass",category:"Rare"},
+{name:"Red Snapper",category:"Rare"},
+{name:"Tilapia",category:"Uncommon"},
+{name:"Clownfish",category:"Uncommon"},
+{name:"Moonfish",category:"Rare"},
+{name:"Tigershark",category:"Legendary"},
+{name:"Basa",category:"Uncommon"},
+{name:"Goldfish",category:"Common"},
+{name:"Angelfish",category:"Uncommon"},
+{name:"Turtle",category:"Rare"}
+];
+
+// ---------------- GREEN BOX MOVEMENT ----------------
+function moveLeft(){greenPos=Math.max(0,greenPos-greenSpeed);greenBox.style.left=greenPos+"px";}
+function moveRight(){greenPos=Math.min(fishingArea.clientWidth-60,greenPos+greenSpeed);greenBox.style.left=greenPos+"px";}
+
+document.addEventListener("keydown",e=>{
+    if(e.key==="ArrowLeft") moveLeft();
+    if(e.key==="ArrowRight") moveRight();
+});
+
+// ---------------- RED LINE RANDOM ----------------
+let redPos = 0;
+let redDir = 1;
+function updateRedLine(){
+    let speed = 2 + Math.random()*3; // slippery randomness
+    redPos += redDir*speed;
+    if(redPos < 0 || redPos > fishingArea.clientWidth-4) redDir*=-1;
+    redLine.style.left = redPos+"px";
 }
-animate();
 
-function moveLeft(){ pos-=15; if(pos<0) pos=0; bar.style.left=pos+"px"; }
-function moveRight(){ pos+=15; if(pos>310) pos=310; bar.style.left=pos+"px"; }
+// ---------------- FISHING LOGIC ----------------
+function updateFishing(){
+    // Check overlap
+    let greenStart = greenPos;
+    let greenEnd = greenPos+60;
+    if(redPos >= greenStart && redPos <= greenEnd){
+        progress += 0.5; // increase
+    } else {
+        progress -= 0.5*(1 + rarityMultiplier(currentFish.category)); // drop faster for rarer fish
+    }
+    if(progress<0) progress=0;
+    if(progress>100){
+        progress=100;
+        alert(`You caught a ${currentFish.name} (${currentFish.category})!`);
+        g.inventory[currentFish.name] = (g.inventory[currentFish.name]||0)+1;
+        localStorage.setItem("game",JSON.stringify(g));
+        resetFishing();
+    }
+    progressBar.style.width = progress+"%";
+    rarityText.textContent = "Rarity: "+currentFish.category;
+}
+
+function rarityMultiplier(cat){
+    const map = {Common:0.5,Uncommon:1,Rare:1.5,Epic:2,Legendary:2.5,Mythical:3,Godly:3.5,Secret:4};
+    return map[cat]||1;
+}
+
+function resetFishing(){
+    progress=0;
+    redPos=0;
+    greenPos=150;
+    greenBox.style.left=greenPos+"px";
+    currentFish = fishList[Math.floor(Math.random()*fishList.length)];
+}
+
+// ---------------- LOOP ----------------
+setInterval(()=>{
+    updateRedLine();
+    updateFishing();
+},50);
+
+resetFishing();
 </script>
 
 </body>
