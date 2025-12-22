@@ -2,16 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>FishyLife - Fishing</title>
+<title>FishyLife - Fish</title>
 <style>
 body{margin:0;font-family:Arial;background:#4db8ff;color:white;text-align:center;}
 header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,0,0,.35);}
 header a{color:white;text-decoration:none;}
-h1{text-align:center;}
-#gameArea{position:relative;margin:20px auto;width:360px;height:400px;background:rgba(0,0,0,.35);}
-#fishBox{position:absolute;width:60px;height:60px;border:3px solid yellow;border-radius:8px;top:170px;left:150px;}
-#catchBar{position:absolute;width:100px;height:15px;background:lime;top:370px;left:130px;border-radius:4px;}
-#fishName{margin-top:10px;font-weight:bold;}
+#track{background:rgba(0,0,0,.15); width:520px;height:40px;margin:20px auto;position:relative;border-radius:8px;}
+#fish{width:20px;height:20px;background:red;position:absolute;top:10px;border-radius:50%;}
+#box{width:100px;height:30px;background:lime;position:absolute;top:5px;border-radius:6px;}
+#catchBar{height:10px;background:gold;width:0%;margin:10px auto;border-radius:5px;}
+button{padding:8px 14px;margin:5px;}
+@media(max-width:600px){#track{width:90%;}}
 </style>
 </head>
 <body>
@@ -20,117 +21,97 @@ h1{text-align:center;}
 <a href="index.html">🏠 Home</a>
 <a href="shop.html">🛒 Shop</a>
 <a href="aquarium.html">🐠 Aquarium</a>
-<a href="quests.html">🎯 Quests</a>
 </header>
 
 <h1>🎣 Fishing</h1>
-<div id="gameArea">
-    <div id="fishBox"></div>
-    <div id="catchBar"></div>
+
+<div id="track">
+    <div id="fish"></div>
+    <div id="box"></div>
 </div>
-<div id="fishName">--</div>
-<button onclick="startFishing()">Start Fishing</button>
+<div id="catchBar"></div>
+
+<!-- Mobile Buttons -->
+<div>
+    <button id="leftBtn">⬅️</button>
+    <button id="rightBtn">➡️</button>
+</div>
 
 <script>
-// ---------- LOAD GAME ----------
-let g = JSON.parse(localStorage.getItem("game"));
-if(!g){ alert("No save found!"); location.href="index.html"; }
-
 // ---------- FISH DATA ----------
-const fishData = [
-    // River
-    {name:"Minnow",location:"River",rarity:"Common"},
-    {name:"Bluegill",location:"River",rarity:"Common"},
-    {name:"Largemouth Bass",location:"River",rarity:"Uncommon"},
-    {name:"Smallmouth Bass",location:"River",rarity:"Uncommon"},
-    {name:"Rainbow Trout",location:"River",rarity:"Uncommon"},
-    {name:"Brown Trout",location:"River",rarity:"Uncommon"},
-    {name:"Brook Trout",location:"River",rarity:"Rare"},
-    {name:"Red Crawfish",location:"River",rarity:"Uncommon"},
-    {name:"Blue Crawfish",location:"River",rarity:"Rare"},
-    {name:"Freshwater Shark",location:"River",rarity:"Legendary"},
-    {name:"Oscar",location:"River",rarity:"Rare"},
-    {name:"Pike",location:"River",rarity:"Rare"},
-    // Ocean
-    {name:"Tuna",location:"Ocean",rarity:"Uncommon"},
-    {name:"Marlin",location:"Ocean",rarity:"Rare"},
-    {name:"Swordfish",location:"Ocean",rarity:"Rare"},
-    {name:"Great White Shark",location:"Ocean",rarity:"Legendary"},
-    {name:"Tiger Shark",location:"Ocean",rarity:"Legendary"},
-    {name:"Hammerhead Shark",location:"Ocean",rarity:"Epic"},
-    {name:"Stingray",location:"Ocean",rarity:"Rare"},
-    {name:"Manta Ray",location:"Ocean",rarity:"Epic"},
-    {name:"Lanternfish",location:"Ocean",rarity:"Rare"},
-    {name:"Anglerfish",location:"Ocean",rarity:"Legendary"},
-    {name:"Blobfish",location:"Ocean",rarity:"Mythical"}
-];
+const fishList = {
+    River: [
+        {name:"Minnow",tier:"Common"}, {name:"Bluegill",tier:"Common"}, {name:"Bass",tier:"Uncommon"},
+        {name:"Trout",tier:"Uncommon"}, {name:"Catfish",tier:"Uncommon"}, {name:"Salmon",tier:"Rare"},
+        {name:"Pike",tier:"Rare"}, {name:"Carp",tier:"Common"}, {name:"Oscar",tier:"Uncommon"},
+        {name:"Freshwater Shark",tier:"Legendary"}, {name:"Crawfish Red",tier:"Common"}, {name:"Crawfish Blue",tier:"Rare"}
+    ],
+    Ocean: [
+        {name:"Tuna",tier:"Uncommon"}, {name:"Marlin",tier:"Rare"}, {name:"Swordfish",tier:"Rare"},
+        {name:"Mahi-Mahi",tier:"Uncommon"}, {name:"Wahoo",tier:"Rare"}, {name:"Snapper",tier:"Uncommon"},
+        {name:"Grouper",tier:"Rare"}, {name:"Great White Shark",tier:"Legendary"}, {name:"Tiger Shark",tier:"Legendary"}
+    ]
+};
 
-// ---------- FISHING MECHANICS ----------
-let fishBox = document.getElementById("fishBox");
-let catchBar = document.getElementById("catchBar");
-let fishNameDisplay = document.getElementById("fishName");
-let fishing = false;
-let currentFish = null;
+// ---------- VARIABLES ----------
+let BAR = document.getElementById("track").offsetWidth;
+let fishX = Math.random()*(BAR-20);
+let fishDir = Math.random()<0.5?-1:1;
+let boxX = 200, boxVel = 0, boxW = 100;
+let catchProg = 0;
+let move = 0;
+let currentFish = fishList[g.location][Math.floor(Math.random()*fishList[g.location].length)];
 
-function startFishing(){
-    if(fishing){ alert("Already fishing!"); return; }
-    if(g.bait<=0){ alert("Not enough bait!"); return; }
-    g.bait--; localStorage.setItem("game",JSON.stringify(g));
-    fishing = true;
-    
-    // Pick random fish for current location
-    const locFish = fishData.filter(f=>f.location===g.location);
-    const weighted = [];
-    locFish.forEach(f=>{
-        let weight = 1;
-        switch(f.rarity){
-            case "Common": weight=50; break;
-            case "Uncommon": weight=25; break;
-            case "Rare": weight=10; break;
-            case "Epic": weight=5; break;
-            case "Legendary": weight=2; break;
-            case "Mythical": weight=1; break;
-        }
-        for(let i=0;i<weight;i++) weighted.push(f);
-    });
-    currentFish = weighted[Math.floor(Math.random()*weighted.length)];
-    fishNameDisplay.textContent = currentFish.name + " (" + currentFish.rarity + ")";
-    
-    // Arcade style fish movement
-    let topPos = Math.random()*340;
-    let leftPos = Math.random()*300;
-    let speed = Math.random()*4+2; // faster and slippery
-    
-    const moveInterval = setInterval(()=>{
-        if(!fishing){ clearInterval(moveInterval); return; }
-        const dx = (Math.random()*2-1)*speed;
-        const dy = (Math.random()*2-1)*speed;
-        topPos += dy; leftPos += dx;
-        topPos = Math.max(0,Math.min(340,topPos));
-        leftPos = Math.max(0,Math.min(300,leftPos));
-        fishBox.style.top = topPos + "px";
-        fishBox.style.left = leftPos + "px";
-        
-        // Check if fishBox inside catchBar (vertical)
-        const barTop = 370, barBottom = 385;
-        if(topPos >= barTop && topPos+60 <= barBottom+60){
-            // Fish caught
-            catchFish();
-            clearInterval(moveInterval);
-        }
-    },50);
+// ---------- ELEMENTS ----------
+const box = document.getElementById("box");
+const fishEl = document.getElementById("fish");
+const catchBar = document.getElementById("catchBar");
+
+// ---------- CONTROLS ----------
+document.onkeydown = e => { if(e.key==="ArrowLeft") move=-1; if(e.key==="ArrowRight") move=1; };
+document.onkeyup = ()=>move=0;
+
+document.getElementById("leftBtn").onmousedown = ()=>move=-1;
+document.getElementById("leftBtn").onmouseup = ()=>move=0;
+document.getElementById("rightBtn").onmousedown = ()=>move=1;
+document.getElementById("rightBtn").onmouseup = ()=>move=0;
+
+// ---------- LOOP ----------
+function loop(){
+    // Fish moves
+    fishX += fishDir * (2 + Math.random()*2);
+    if(Math.random()<0.02) fishDir*=-1;
+    if(fishX<0 || fishX>BAR-20) fishDir*=-1;
+    fishEl.style.left = fishX+"px";
+
+    // Box moves
+    boxVel += move*0.7;
+    boxVel *= 0.9;
+    boxX += boxVel;
+    boxX = Math.max(0, Math.min(BAR-boxW, boxX));
+    box.style.left = boxX+"px";
+
+    // Catch progress
+    const center = fishX + 10;
+    const inside = center > boxX && center < boxX+boxW;
+    if(inside) catchProg += 1.2;
+    else catchProg -= 0.8;
+    catchProg = Math.max(0, Math.min(100, catchProg));
+    catchBar.style.width = catchProg + "%";
+
+    if(catchProg>=100){
+        clearInterval(loopInterval);
+        alert(`🐟 You caught a ${currentFish.name} (${currentFish.tier})!`);
+        // Update inventory
+        g.inventory[currentFish.name] = (g.inventory[currentFish.name]||0)+1;
+        g.caught[currentFish.name] = true;
+        g.fishCount++;
+        g.money += 5; // simple reward
+        localStorage.setItem("game",JSON.stringify(g));
+        location.reload();
+    }
 }
-
-// ---------- CATCH FISH ----------
-function catchFish(){
-    alert("You caught a " + currentFish.name + "!");
-    g.inventory[currentFish.name] = (g.inventory[currentFish.name]||0)+1;
-    g.caught[currentFish.name] = true;
-    g.fishCount++;
-    localStorage.setItem("game",JSON.stringify(g));
-    fishing=false;
-    fishNameDisplay.textContent="--";
-}
+let loopInterval = setInterval(loop,16);
 </script>
 
 </body>
