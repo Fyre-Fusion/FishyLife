@@ -9,8 +9,8 @@ header{display:flex;justify-content:space-around;padding:10px;background:rgba(0,
 header a{color:white;text-decoration:none;}
 .card{background:rgba(0,0,0,.35);width:360px;margin:20px auto;padding:20px;border-radius:14px;}
 button{padding:8px 14px;border:none;border-radius:8px;font-weight:bold;margin:6px;cursor:pointer;}
-h1{text-align:center;}
 input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
+h1{text-align:center;}
 </style>
 </head>
 <body>
@@ -18,6 +18,7 @@ input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 <header>
 <a href="index.html">🏠 Home</a>
 <a href="fish.html">🎣 Fish</a>
+<a href="aquarium.html">🐠 Aquarium</a>
 </header>
 
 <h1>🛒 Shop</h1>
@@ -48,7 +49,7 @@ input[type=number]{padding:4px;border-radius:6px;border:none;text-align:center;}
 </div>
 
 <script>
-// Rods with proper names & prices
+// ---------- RODS ----------
 const rods = [
     {name:"Basic Rod",price:0},
     {name:"Silver Rod",price:200},
@@ -60,12 +61,13 @@ const rods = [
     {name:"Lucky Rod",price:1800}
 ];
 
-// LOAD GAME
+// ---------- LOAD GAME ----------
 let g = JSON.parse(localStorage.getItem("game")) || {
-    level:1,xp:0,xpNeed:50,money:50,bait:5,rod:"Basic Rod",inventory:{},caught:{},fishCount:0,location:"Creek"
+    level:1,xp:0,xpNeed:50,money:5000,bait:5,rod:"Basic Rod",
+    inventory:{},caught:{},fishCount:0,location:"River",boat:"Sea Whisper"
 };
 
-// SHOW STATS
+// ---------- SHOW STATS ----------
 function showStats(){
     document.getElementById("money").textContent = g.money;
     document.getElementById("rodName").textContent = g.rod;
@@ -76,7 +78,7 @@ function showStats(){
 }
 showStats();
 
-// BUY BASIC BAIT
+// ---------- BUY BASIC BAIT ----------
 function buyBait(){
     const qty = parseInt(document.getElementById("baitQty").value)||1;
     const cost = qty*5;
@@ -88,22 +90,22 @@ function buyBait(){
     alert(`Bought ${qty} basic bait(s)!`);
 }
 
-// BUY ADVANCED BAIT
+// ---------- BUY ADVANCED BAIT ----------
 function buyAdvBait(){
     const qty = parseInt(document.getElementById("advBaitQty").value)||1;
     const cost = qty*20;
     if(g.money<cost){ alert("Not enough money!"); return; }
     g.money -= cost;
-    g.bait = (g.bait||0)+qty*2; // each advanced bait gives 2 bait
+    g.bait = (g.bait||0)+qty*2; // advanced bait gives 2 bait
     localStorage.setItem("game",JSON.stringify(g));
     showStats();
     alert(`Bought ${qty} advanced bait(s)!`);
 }
 
-// UPGRADE ROD
+// ---------- UPGRADE ROD ----------
 function upgradeRod(){
     const idx = rods.findIndex(r=>r.name===g.rod);
-    if(idx>=rods.length-1){ alert("Rod already at max!"); return; }
+    if(idx>=rods.length-1){ alert("Rod already max!"); return; }
     const nextRod = rods[idx+1];
     if(g.money<nextRod.price){ alert("Not enough money for rod upgrade!"); return; }
     g.money -= nextRod.price;
