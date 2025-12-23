@@ -7,7 +7,7 @@
 body {
     margin:0;
     font-family:Arial, sans-serif;
-    background: linear-gradient(to bottom, #004080, #001f33);
+    background: linear-gradient(to bottom, #0a2e5a, #004080);
     color:white;
     text-align:center;
 }
@@ -26,10 +26,10 @@ h1 {
     margin-top:20px;
 }
 .card {
-    background:rgba(0,0,0,.35);
     width:360px;
     margin:20px auto;
     padding:20px;
+    text-align:left;
     border-radius:14px;
 }
 button {
@@ -44,79 +44,22 @@ select {
     padding:6px;
     border-radius:6px;
 }
-.fish-card {
-    background:rgba(255,255,255,.15);
-    padding:6px;
-    border-radius:6px;
-    margin:4px 0;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-input[type=text] {
-    padding:4px;
-    border-radius:6px;
-    border:none;
-    width:150px;
-    margin-right:6px;
-}
 #quests, #inventory, #encyclopedia, #skillsCard {
     display:none;
-}
-#fishingArea {
-    margin:20px auto;
-    width:360px;
-    height:50px;
-    background:#111;
-    position:relative;
-    border-radius:6px;
-}
-#greenBox {
-    position:absolute;
-    width:50px;
-    height:50px;
-    border:3px solid lime;
-    top:0;
-}
-#redLine {
-    position:absolute;
-    width:3px;
-    height:50px;
-    background:red;
-    top:0;
-}
-#progressContainer {
-    margin:10px auto;
-    width:360px;
-    height:20px;
-    background:#333;
-    border-radius:10px;
-}
-#progressBar {
-    height:100%;
-    width:0%;
-    background:lime;
-    border-radius:10px;
-}
-#rarity {
-    margin-top:4px;
-    font-weight:bold;
-}
-#arrowControls button{
-    font-size:18px;
-    padding:6px 10px;
 }
 </style>
 </head>
 <body>
 
 <header>
-<a href="index.html">🏠 Home</a>
+<a href="fish.html">🎣 Fish</a>
 <a href="shop.html">🛒 Shop</a>
 <a href="#" onclick="toggleCard('inventory')">🎒 Bag</a>
 <a href="#" onclick="toggleCard('encyclopedia')">📖 Encyclopedia</a>
+<a href="#" onclick="toggleCard('skillsCard')">🛠 Skills</a>
 <a href="#" onclick="toggleCard('quests')">🎯 Quests</a>
 <a href="aquarium.html">🐠 Aquarium</a>
+<a href="settings.html">⚙️ Settings</a>
 </header>
 
 <h1>🐟 FishyLife</h1>
@@ -126,35 +69,19 @@ input[type=text] {
     <p>🧪 XP: <span id="xp"></span> / <span id="xpNeed"></span></p>
     <p>💰 Money: $<span id="money"></span></p>
     <p>🪱 Bait: <span id="bait"></span></p>
-    <p>🌍 Location: 
-        <select id="location" onchange="changeLocation()">
-            <option value="River">River</option>
-            <option value="Ocean">Ocean</option>
-        </select>
-    </p>
 </div>
 
-<div class="card" id="fishingCard">
-    <h2>🎣 Fishing</h2>
-    <div id="fishingArea">
-        <div id="greenBox"></div>
-        <div id="redLine"></div>
-    </div>
-    <div id="progressContainer">
-        <div id="progressBar"></div>
-    </div>
-    <p id="rarity">Rarity: Common</p>
-    <div id="arrowControls">
-        <button onclick="moveGreen(-5)">⬅️</button>
-        <button onclick="moveGreen(5)">➡️</button>
-        <button onclick="startFishing()">🎣 Start</button>
-    </div>
+<!-- QUESTS -->
+<div class="card" id="quests">
+<h2>🎯 Active Quest</h2>
+<div id="questInfo"></div>
 </div>
 
 <!-- INVENTORY -->
 <div class="card" id="inventory">
 <h2>🎒 Inventory</h2>
 <div id="invList"></div>
+<button onclick="sellFish()">Sell Selected</button>
 </div>
 
 <!-- ENCYCLOPEDIA -->
@@ -163,10 +90,10 @@ input[type=text] {
 <div id="fishList"></div>
 </div>
 
-<!-- QUESTS -->
-<div class="card" id="quests">
-<h2>🎯 Active Quest</h2>
-<div id="questInfo"></div>
+<!-- SKILLS -->
+<div class="card" id="skillsCard">
+<h2>🛠 Skills</h2>
+<div id="skillsList"></div>
 </div>
 
 <script>
@@ -178,7 +105,7 @@ if(!g){
         rod:"Basic Rod", location:"River",
         unlocked:{River:true,Ocean:false},
         inventory:{}, caught:{}, fishCount:0,
-        skillPoints:0, skills:{},
+        skillPoints:0, skills:{control:0,power:0,glide:0},
         activeQuest:null, questProgress:{}
     };
     localStorage.setItem("game",JSON.stringify(g));
@@ -190,7 +117,6 @@ function updateStats(){
     document.getElementById("xpNeed").textContent = g.xpNeed;
     document.getElementById("money").textContent = g.money;
     document.getElementById("bait").textContent = g.bait;
-    document.getElementById("location").value = g.location;
 }
 
 updateStats();
@@ -203,6 +129,7 @@ function toggleCard(id){
         el.style.display="block";
         if(id==="inventory") renderInventory();
         if(id==="encyclopedia") renderFish();
+        if(id==="skillsCard") renderSkills();
         if(id==="quests") renderQuest();
     }
 }
@@ -214,73 +141,105 @@ function renderInventory(){
     for(let f in g.inventory){
         const div = document.createElement("div");
         div.className = "fish-card";
-        const sellBtn = `<button onclick="sellFish('${f}')">Sell</button>`;
-        div.innerHTML = `${f} x${g.inventory[f]} ${sellBtn}`;
+        div.textContent = `${f} x${g.inventory[f]}`;
         invList.appendChild(div);
     }
 }
 
-function sellFish(name){
-    if(!g.inventory[name] || g.inventory[name]<=0) return;
-    const sellPrice = 5; // could scale by rarity
-    g.money += sellPrice;
-    g.inventory[name]--;
-    g.caught[name] = true;
+function sellFish(){
+    for(let f in g.inventory){
+        const price = 10; // simplified, could vary per fish
+        g.money += g.inventory[f]*price;
+        g.inventory[f] = 0;
+    }
     localStorage.setItem("game",JSON.stringify(g));
-    renderInventory();
-    renderFish();
     updateStats();
+    renderInventory();
+    alert("All fish sold!");
 }
 
 // ---------------- ENCYCLOPEDIA ----------------
 const fishData = [
-{name:"Minnow",category:"Common",location:"River"},
-{name:"Bluegill",category:"Common",location:"River"},
-{name:"Bass",category:"Uncommon",location:"River"},
-{name:"Trout",category:"Uncommon",location:"River"},
-{name:"Catfish",category:"Uncommon",location:"River"},
-{name:"Salmon",category:"Rare",location:"River"},
-{name:"Peacock Bass",category:"Rare",location:"River"},
-{name:"Red Snapper",category:"Rare",location:"Ocean"},
-{name:"Tilapia",category:"Uncommon",location:"River"},
-{name:"Clownfish",category:"Uncommon",location:"Ocean"},
-{name:"Moonfish",category:"Rare",location:"Ocean"},
-{name:"Tigershark",category:"Legendary",location:"Ocean"},
-{name:"Basa",category:"Uncommon",location:"River"},
-{name:"Goldfish",category:"Common",location:"River"},
-{name:"Angelfish",category:"Uncommon",location:"Ocean"},
-{name:"Turtle",category:"Rare",location:"Ocean"},
-{name:"Kepper",category:"Rare",location:"Ocean"},
-{name:"Lemonshark",category:"Legendary",location:"Ocean"},
-{name:"Lungfish",category:"Rare",location:"River"},
-{name:"Squid",category:"Uncommon",location:"Ocean"},
-{name:"Crabs",category:"Common",location:"Ocean"},
-{name:"Crawfish Red",category:"Common",location:"River"},
-{name:"Crawfish Blue",category:"Rare",location:"River"},
-{name:"Pufferfish",category:"Uncommon",location:"Ocean"},
-{name:"Vampire Fish",category:"Rare",location:"River"},
-{name:"Japanese Spider Crab",category:"Rare",location:"Ocean"},
-{name:"Carp",category:"Common",location:"River"},
-{name:"Oscar",category:"Uncommon",location:"River"},
-{name:"Freshwater Shark",category:"Rare",location:"River"},
-{name:"Lionfish",category:"Rare",location:"Ocean"},
-{name:"Prawn",category:"Common",location:"Ocean"},
-{name:"Shrimp",category:"Common",location:"Ocean"},
-{name:"Octopus",category:"Rare",location:"Ocean"},
-{name:"Sea Urchin",category:"Uncommon",location:"Ocean"},
-{name:"Salami",category:"Common",location:"Ocean"},
-{name:"Sting Ray",category:"Rare",location:"Ocean"},
-{name:"Dolphin",category:"Legendary",location:"Ocean"},
-{name:"Blind Dolphin",category:"Legendary",location:"River"},
-{name:"Stonefish",category:"Rare",location:"Ocean"},
-{name:"Electric Eel",category:"Rare",location:"River"},
-{name:"Red Tail Catfish",category:"Rare",location:"River"},
-{name:"Tigerfish",category:"Legendary",location:"River"},
-{name:"Great White Shark",category:"Legendary",location:"Ocean"},
-{name:"Hammerhead Shark",category:"Legendary",location:"Ocean"},
-{name:"Spine Fish",category:"Rare",location:"Ocean"},
-{name:"Sea Turtle",category:"Rare",location:"Ocean"},
-// add remaining river and ocean fish similarly
+{name:"Minnow",category:"Common"},
+{name:"Bluegill",category:"Common"},
+{name:"Bass",category:"Uncommon"},
+{name:"Trout",category:"Uncommon"},
+{name:"Catfish",category:"Uncommon"},
+{name:"Salmon",category:"Rare"},
+{name:"Peacock Bass",category:"Rare"},
+{name:"Red Snapper",category:"Rare"},
+{name:"Tilapia",category:"Uncommon"},
+{name:"Clownfish",category:"Uncommon"},
+{name:"Moonfish",category:"Rare"},
+{name:"Tigershark",category:"Legendary"},
+{name:"Basa",category:"Uncommon"},
+{name:"Goldfish",category:"Common"},
+{name:"Angelfish",category:"Uncommon"},
+{name:"Turtle",category:"Rare"},
+{name:"Kepper",category:"Rare"},
+{name:"Lemonshark",category:"Legendary"},
+{name:"Lungfish",category:"Rare"},
+{name:"Squid",category:"Uncommon"},
+{name:"Crabs",category:"Common"},
+{name:"Crawfish Red",category:"Common"},
+{name:"Crawfish Blue",category:"Uncommon"},
+{name:"Pufferfish",category:"Rare"},
+{name:"Vampire Fish",category:"Epic"},
+{name:"Japanese Spider Crab",category:"Rare"},
+{name:"Carp",category:"Common"},
+{name:"Oscar",category:"Uncommon"},
+{name:"Freshwater Sharks",category:"Rare"},
+{name:"Lionfish",category:"Rare"},
+{name:"Prawn",category:"Uncommon"},
+{name:"Shrimp",category:"Common"},
+{name:"Octopus",category:"Rare"},
+{name:"Sea Urchin",category:"Uncommon"},
+{name:"Salami",category:"Uncommon"},
+{name:"Sting Ray",category:"Rare"},
+{name:"Dolphin",category:"Epic"},
+{name:"Blind Dolphin",category:"Rare"},
+{name:"Stonefish",category:"Rare"},
+{name:"Pike",category:"Uncommon"},
+{name:"Sea Snake",category:"Rare"},
+{name:"Eel",category:"Uncommon"},
+{name:"Electric Eel",category:"Epic"},
+{name:"Tigerfish",category:"Rare"},
+{name:"Red Tail Catfish",category:"Epic"},
+{name:"Great White Shark",category:"Legendary"},
+{name:"Hammerhead Shark",category:"Legendary"},
+{name:"Spine Fish",category:"Rare"},
+{name:"Sea Turtle",category:"Rare"},
+{name:"Largemouth Bass",category:"Uncommon"},
+{name:"Smallmouth Bass",category:"Uncommon"},
+{name:"Rainbow Trout",category:"Uncommon"},
+{name:"Brown Trout",category:"Uncommon"},
+{name:"Brook Trout",category:"Uncommon"},
+{name:"Northern Pike",category:"Uncommon"},
+{name:"Chain Pickerel",category:"Uncommon"},
+{name:"Walleye",category:"Uncommon"},
+{name:"Muskellunge",category:"Rare"},
+{name:"Channel Catfish",category:"Uncommon"},
+{name:"Flathead Catfish",category:"Rare"},
+{name:"Blue Catfish",category:"Rare"},
+{name:"Yellow Perch",category:"Common"},
+{name:"European Perch",category:"Uncommon"},
+{name:"Black Crappie",category:"Common"},
+{name:"White Crappie",category:"Uncommon"},
+{name:"Grass Carp",category:"Uncommon"},
+{name:"Bighead Carp",category:"Uncommon"},
+{name:"Silver Carp",category:"Uncommon"},
+{name:"Crucian Carp",category:"Common"},
+{name:"Tench",category:"Common"},
+{name:"White Sturgeon",category:"Rare"},
+{name:"Atlantic Sturgeon",category:"Rare"},
+{name:"Lake Sturgeon",category:"Rare"},
+{name:"Longnose Gar",category:"Rare"},
+{name:"Alligator Gar",category:"Epic"},
+{name:"Bullhead",category:"Common"},
+{name:"Burbot",category:"Common"},
+{name:"Dogfish Freshwater",category:"Uncommon"},
+{name:"Chub",category:"Common"},
+{name:"Dace",category:"Common"}
 ];
 
 function renderFish(){
@@ -295,6 +254,22 @@ function renderFish(){
     });
 }
 
+// ---------------- SKILLS ----------------
+function renderSkills(){
+    const container = document.getElementById("skillsList");
+    container.innerHTML = "";
+    const sp = document.createElement("div");
+    sp.textContent = `Skill Points: ${g.skillPoints}`;
+    container.appendChild(sp);
+
+    for(let key in g.skills){
+        const div = document.createElement("div");
+        div.className = "skill-line";
+        div.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)}: ${g.skills[key]}`;
+        container.appendChild(div);
+    }
+}
+
 // ---------------- QUESTS ----------------
 function renderQuest(){
     const card = document.getElementById("quests");
@@ -305,72 +280,6 @@ function renderQuest(){
     const target = g.activeQuest.target;
     const progress = g.questProgress[fishName]||0;
     info.textContent = `Catch ${target} ${fishName}: ${progress}/${target}`;
-}
-
-// ---------------- LOCATION ----------------
-function changeLocation(){
-    const loc = document.getElementById("location").value;
-    if(!g.unlocked[loc]){
-        alert("Location locked!");
-        document.getElementById("location").value = g.location;
-        return;
-    }
-    g.location = loc;
-    localStorage.setItem("game",JSON.stringify(g));
-    updateStats();
-}
-
-// ---------------- FISHING MECHANICS ----------------
-let fishingInterval, redSpeed=2, greenPos=0, redPos=0, progress=0;
-const greenBox = document.getElementById("greenBox");
-const redLine = document.getElementById("redLine");
-const progressBar = document.getElementById("progressBar");
-const rarityLabel = document.getElementById("rarity");
-
-function moveGreen(dx){
-    greenPos = Math.min(Math.max(greenPos+dx,0),310);
-    greenBox.style.left = greenPos+"px";
-}
-
-document.addEventListener("keydown",(e)=>{
-    if(e.key==="ArrowLeft") moveGreen(-5);
-    if(e.key==="ArrowRight") moveGreen(5);
-});
-
-function startFishing(){
-    if(g.bait<=0){ alert("No bait!"); return; }
-    g.bait--;
-    updateStats();
-    const fish = fishData[Math.floor(Math.random()*fishData.length)];
-    rarityLabel.textContent = "Rarity: " + fish.category;
-    redSpeed = 2 + ["Common","Uncommon","Rare","Epic","Legendary","Mythical","Godly","Secret"].indexOf(fish.category);
-    progress = 0;
-    progressBar.style.width = "0%";
-    fishingInterval = setInterval(()=>{
-        // move red line randomly
-        redPos += (Math.random()*2-1)*redSpeed;
-        if(redPos<0) redPos=0;
-        if(redPos>357) redPos=357;
-        redLine.style.left = redPos+"px";
-        // check if in green box
-        if(redPos>=greenPos && redPos<=greenPos+50){
-            progress += 1;
-        } else progress -= 2;
-        if(progress>100) progress=100;
-        if(progress<0) progress=0;
-        progressBar.style.width = progress+"%";
-        if(progress>=100){
-            clearInterval(fishingInterval);
-            alert(`You caught a ${fish.name}!`);
-            g.inventory[fish.name] = (g.inventory[fish.name]||0)+1;
-            g.caught[fish.name] = true;
-            g.fishCount++;
-            localStorage.setItem("game",JSON.stringify(g));
-            renderInventory();
-            renderFish();
-            updateStats();
-        }
-    },50);
 }
 </script>
 
